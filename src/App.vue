@@ -3,24 +3,20 @@
     <!-- Subtle Film Noise Texture Overlay (Justine Soulié Aesthetic) -->
     <div class="noise-overlay" aria-hidden="true"></div>
 
-    <!-- WebGPU Canvas Layer (Patrick Heng Style 3D Spring Card Carousel + Navier-Stokes Fluid) -->
+    <!-- 3D Canvas Layer (Patrick Heng Style 3D Spring Card Carousel + Fluid Dynamics) -->
     <WebGPUCanvas
       ref="webgpuCanvasRef"
       @select-project="onSelectProject"
       @active-index-change="onActiveIndexChange"
-      @wheel-delta="onWheelDelta"
-      @backend-ready="onBackendReady"
-      @hover-book-change="onHoverBookChange"
     />
 
-    <!-- Minimal Header (Navigation) -->
+    <!-- Header Navigation -->
     <Navigation
-      :backend-name="backendName"
-      :is-web-g-p-u="isWebGPU"
       @open-about="showAboutModal = true"
+      @reset-carousel="onResetCarousel"
     />
 
-    <!-- Signature Justine Soulié Minimalist Bottom Bar (.work-names) -->
+    <!-- Signature Justine Soulié Bottom Showcase (.work-names) -->
     <footer class="work-names">
       <button
         class="work-names__content"
@@ -36,8 +32,15 @@
       </button>
     </footer>
 
-    <!-- Case Study & About Modals -->
-    <ProjectModal :project="selectedProject" @close="selectedProject = null" />
+    <!-- Fullscreen Case Study Detail Modal (Horizontal Scroll) -->
+    <ProjectModal
+      :project="selectedProject"
+      @close="selectedProject = null"
+      @select-project="onSelectProject"
+      @open-about="showAboutModal = true"
+    />
+
+    <!-- About Modal -->
     <AboutModal :show="showAboutModal" @close="showAboutModal = false" />
   </div>
 </template>
@@ -53,11 +56,8 @@ import { PROJECTS, type ProjectItem } from './data/projects';
 const webgpuCanvasRef = ref<InstanceType<typeof WebGPUCanvas> | null>(null);
 
 const activeIndex = ref<number>(0);
-const hoveredIndex = ref<number | null>(null);
 const selectedProject = ref<ProjectItem | null>(null);
 const showAboutModal = ref<boolean>(false);
-const backendName = ref<string>('Initializing WebGPU...');
-const isWebGPU = ref<boolean>(false);
 
 const currentProject = computed<ProjectItem>(() => {
   return PROJECTS[activeIndex.value] || PROJECTS[0];
@@ -65,23 +65,23 @@ const currentProject = computed<ProjectItem>(() => {
 
 const onSelectProject = (project: ProjectItem) => {
   selectedProject.value = project;
+  const idx = PROJECTS.findIndex((p) => p.id === project.id);
+  if (idx !== -1) {
+    activeIndex.value = idx;
+    if (webgpuCanvasRef.value) {
+      webgpuCanvasRef.value.selectProject(idx);
+    }
+  }
 };
 
 const onActiveIndexChange = (index: number) => {
   activeIndex.value = index;
 };
 
-const onHoverBookChange = (index: number | null) => {
-  hoveredIndex.value = index;
-};
-
-const onWheelDelta = (_dir: number) => {
-  // Wheel physics handled inside engine
-};
-
-const onBackendReady = (backend: string) => {
-  backendName.value = backend;
-  isWebGPU.value = backend.includes('WebGPU');
+const onResetCarousel = () => {
+  if (webgpuCanvasRef.value) {
+    webgpuCanvasRef.value.resetCarousel();
+  }
 };
 
 const openActiveProject = () => {
@@ -98,7 +98,7 @@ const openActiveProject = () => {
   background-color: #f4f0ed;
 }
 
-/* Subtle Film Noise Texture Overlay (Pure CSS/SVG) */
+/* Subtle Film Noise Texture Overlay */
 .noise-overlay {
   position: fixed;
   inset: 0;
@@ -171,7 +171,7 @@ const openActiveProject = () => {
   margin: 0;
 }
 
-/* Smooth Fade/Slide for Active Project Transitions */
+/* Transitions */
 .meta-fade-enter-active,
 .meta-fade-leave-active {
   transition: all 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);

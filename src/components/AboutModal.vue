@@ -1,61 +1,60 @@
 <template>
   <Teleport to="body">
-    <Transition name="fade-scale">
-      <div v-if="show" class="modal-backdrop interactive" @click.self="$emit('close')">
-        <div class="about-card selectable-text">
-          <button class="close-btn" @click="$emit('close')" aria-label="Close">✕</button>
+    <Transition name="fade">
+      <div v-if="show" class="about-backdrop" @click.self="$emit('close')">
+        <div class="about-panel" @keydown.esc="$emit('close')">
+          <!-- Close button -->
+          <button class="about-close" @click="$emit('close')" aria-label="Close About">
+            ✕
+          </button>
 
-          <div class="modal-header">
-            <span class="category-pill">ARCHIVE & CRAFT</span>
-            <h2 class="about-title">Phuwadon Thontra</h2>
-            <p class="about-subtitle">
-              Creative Developer & Fluid Dynamics Physics Engineer • Bangkok, Thailand
-            </p>
-
-            <!-- Signature thunder bar -->
-            <div class="thunder-bar">
-              <svg width="240" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2" />
-              </svg>
-            </div>
+          <!-- Header -->
+          <div class="about-brand">
+            <h2 class="about-name">JUSTINE SOULIÉ</h2>
+            <p class="about-tag">Art Director & Illustrator based in Paris</p>
           </div>
 
-          <div class="modal-body">
-            <p class="intro-quote">
-              "Building high-performance creative coding experiences, fluid WebGL/WebGPU physics, and resilient digital architectures where the canvas is the interface."
+          <!-- Divider -->
+          <div class="about-thunder">
+            <svg width="240" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2" />
+            </svg>
+          </div>
+
+          <!-- Bio -->
+          <div class="about-bio">
+            <p>
+              I'm Justine Soulié, a French multidisciplinary designer and art director passionate about people's stories and ideas. I strive to translate narratives into meaningful, bold, and playful visual worlds across branding, motion, digital illustration, and physical packaging.
             </p>
+            <p>
+              Curious and eager to explore new mediums, I collaborate closely with creative technologists, studios, and cultural artists worldwide.
+            </p>
+          </div>
 
-            <div class="info-block">
-              <h3 class="section-label">EDUCATION & RECOGNITION</h3>
-              <p class="info-content">
-                <strong>Harbour.Space @ UTCC Institute</strong><br />
-                Bachelor of Business Administration in Digital Marketing & Interaction Design<br />
-                <span class="scholar-badge">✦ Full Scholarship Recipient (Upgrading Thailand Project) • Class of 2027</span>
-              </p>
+          <!-- Selected Clients -->
+          <div class="about-section">
+            <h3 class="section-title">SELECTED CLIENTS</h3>
+            <p class="clients-list">
+              Hermès • Renault France • Matthieu Chedid (-M-) • Labo-M • 3ème Bureau • 17Mars • Machine Molle • Prismic • Studio Vandal
+            </p>
+          </div>
+
+          <!-- Contact & Credits -->
+          <div class="about-footer">
+            <div class="footer-col">
+              <span class="col-label">CONTACT</span>
+              <a href="mailto:contact@justinesoulie.fr" class="footer-link">contact@justinesoulie.fr</a>
             </div>
-
-            <div class="info-block">
-              <h3 class="section-label">TECHNICAL CRAFT</h3>
-              <div class="skills-grid">
-                <div class="skill-row">
-                  <span class="skill-category">Frontend & WebGL:</span>
-                  <p class="skill-list">Three.js, WebGPU, TypeScript, Vue 3, Next.js, Shaders, Tailwind CSS</p>
-                </div>
-                <div class="skill-row">
-                  <span class="skill-category">Backend & Systems:</span>
-                  <p class="skill-list">Rust (Axum), PostgreSQL, Prisma, Bun, Turborepo, RESTful APIs</p>
-                </div>
-                <div class="skill-row">
-                  <span class="skill-category">Performance & Growth:</span>
-                  <p class="skill-list">60fps Animation Physics, Technical SEO, Core Web Vitals, CRO Analytics</p>
-                </div>
+            <div class="footer-col">
+              <span class="col-label">FOLLOW</span>
+              <div class="links-row">
+                <a href="https://instagram.com/justinesoulie" target="_blank" rel="noopener noreferrer" class="footer-link">Instagram ↗</a>
+                <a href="https://behance.net/justinesoulie" target="_blank" rel="noopener noreferrer" class="footer-link">Behance ↗</a>
               </div>
             </div>
-
-            <div class="contact-links">
-              <a href="mailto:thontrapoowadol@gmail.com" class="cta-btn primary-cta">Get in Touch ✉</a>
-              <a href="https://github.com/Poohmuhahaha" target="_blank" rel="noopener noreferrer" class="cta-btn secondary-cta">GitHub Profile ↗</a>
-              <a href="https://linkedin.com/in/phuwadon-thontra" target="_blank" rel="noopener noreferrer" class="cta-btn secondary-cta">LinkedIn ↗</a>
+            <div class="footer-col">
+              <span class="col-label">CREDITS</span>
+              <span class="col-text">Creative Development by <a href="https://patrickheng.com" target="_blank" rel="noopener noreferrer" class="footer-link">Patrick Heng</a></span>
             </div>
           </div>
         </div>
@@ -75,225 +74,160 @@ defineEmits<{
 </script>
 
 <style scoped>
-.modal-backdrop {
+.about-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
-  background: rgba(37, 36, 34, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  z-index: 120;
+  background: rgba(18, 14, 11, 0.45);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
 }
 
-.about-card {
+.about-panel {
   position: relative;
   width: 100%;
-  max-width: 660px;
-  background: #fdfcf9;
-  border: 1px solid rgba(37, 36, 34, 0.12);
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.16);
-  border-radius: 16px;
-  padding: 44px 48px;
+  max-width: 680px;
+  background: #f4f0ed;
   color: #252422;
-  max-height: 88vh;
-  overflow-y: auto;
+  border-radius: 6px;
+  padding: 48px;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.2);
   font-family: var(--font-body);
 }
 
-.close-btn {
+.about-close {
   position: absolute;
   top: 24px;
-  right: 26px;
+  right: 28px;
   background: none;
   border: none;
-  font-size: 18px;
-  color: #8c8080;
+  font-size: 20px;
+  color: #252422;
   cursor: pointer;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
+  line-height: 1;
+  transition: transform 0.2s ease;
 }
 
-.close-btn:hover {
-  color: #252422;
+.about-close:hover {
   transform: rotate(90deg);
 }
 
-.modal-header {
-  margin-bottom: 24px;
+.about-brand {
+  margin-bottom: 20px;
 }
 
-.category-pill {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: #e56b55;
-  display: block;
-  margin-bottom: 8px;
+.about-name {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
 }
 
-.about-title {
-  font-size: clamp(30px, 4vw, 42px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #252422;
-  margin-bottom: 8px;
-  line-height: 1.1;
-}
-
-.about-subtitle {
-  font-size: 15px;
-  color: #8c8080;
-  line-height: 1.5;
-  margin-bottom: 16px;
-}
-
-.thunder-bar {
-  color: #e56b55;
-  opacity: 0.75;
-}
-
-.modal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.intro-quote {
-  font-size: 16px;
-  line-height: 1.6;
-  color: #252422;
-  font-style: italic;
-  padding: 16px 20px;
-  background: rgba(37, 36, 34, 0.03);
-  border-left: 3px solid #e56b55;
-  border-radius: 4px;
-}
-
-.info-block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.section-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: #8c8080;
-  text-transform: uppercase;
-}
-
-.info-content {
+.about-tag {
   font-size: 14px;
-  line-height: 1.6;
-  color: #383531;
+  color: #8c8080;
+  margin: 6px 0 0;
 }
 
-.scholar-badge {
-  color: #e56b55;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.skills-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.skill-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.skill-category {
-  font-size: 12px;
-  font-weight: 600;
+.about-thunder {
+  margin: 16px 0 24px;
   color: #252422;
+  opacity: 0.85;
 }
 
-.skill-list {
+.about-thunder svg {
+  display: block;
+}
+
+.about-bio {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #4a4540;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.about-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #252422;
+  margin-bottom: 8px;
+}
+
+.clients-list {
   font-size: 13px;
-  color: #66605a;
-  line-height: 1.45;
+  line-height: 1.6;
+  color: #6d6660;
+  margin: 0;
 }
 
-.contact-links {
+.about-footer {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 12px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(37, 36, 34, 0.08);
+  gap: 28px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(37, 36, 34, 0.12);
 }
 
-.cta-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 24px;
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.col-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #8c8080;
+}
+
+.footer-link {
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-decoration: none;
-  transition: all 0.25s ease;
-}
-
-.primary-cta {
-  background: #252422;
-  color: #ffffff;
-}
-
-.primary-cta:hover {
-  background: #e56b55;
-  transform: translateY(-1px);
-}
-
-.secondary-cta {
-  background: transparent;
   color: #252422;
-  border: 1px solid rgba(37, 36, 34, 0.2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s ease;
 }
 
-.secondary-cta:hover {
-  border-color: #252422;
-  background: rgba(37, 36, 34, 0.04);
+.footer-link:hover {
+  color: #e56b55;
 }
 
-/* Modal Transitions */
-.fade-scale-enter-active,
-.fade-scale-leave-active {
-  transition: all 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
+.links-row {
+  display: flex;
+  gap: 12px;
 }
 
-.fade-scale-enter-from,
-.fade-scale-leave-to {
+.col-text {
+  font-size: 13px;
+  color: #6d6660;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 
-.fade-scale-enter-from .about-card,
-.fade-scale-leave-to .about-card {
-  transform: scale(0.96) translateY(12px);
-}
-
-@media (max-width: 640px) {
-  .about-card {
+@media (max-width: 600px) {
+  .about-panel {
     padding: 32px 24px;
-  }
-  .contact-links {
-    flex-direction: column;
-  }
-  .cta-btn {
-    justify-content: center;
   }
 }
 </style>

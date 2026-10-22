@@ -19,14 +19,12 @@ import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { DragGesture } from '@use-gesture/vanilla';
 import { WebGPUEngine } from '../webgpu/WebGPUEngine';
 import { FluidSimulation } from '../webgpu/FluidSimulation';
-import { PROJECTS, type ProjectItem } from '../data/projects';
+import type { ProjectItem } from '../data/projects';
 
 const emit = defineEmits<{
   (e: 'select-project', project: ProjectItem): void;
   (e: 'active-index-change', index: number): void;
   (e: 'wheel-delta', dir: number): void;
-  (e: 'backend-ready', backend: string): void;
-  (e: 'book-open-change', isOpen: boolean): void;
   (e: 'hover-book-change', index: number | null): void;
 }>();
 
@@ -42,28 +40,16 @@ onMounted(async () => {
   if (fluidCanvasRef.value) {
     try {
       fluidSim = new FluidSimulation(fluidCanvasRef.value);
-      // Set initial palette to Project #1 (Hydro Core)
-      if (PROJECTS[0]?.paletteColors) {
-        fluidSim.setPalette(PROJECTS[0].paletteColors);
-      }
     } catch (err) {
       console.warn('Fluid simulation initialization skipped:', err);
     }
   }
 
-  // 2. Initialize 3D WebGPU Spring Card Engine
+  // 2. Initialize 3D Spring Card Engine
   if (containerRef.value) {
     engine = new WebGPUEngine(containerRef.value, {
       onSelectProject: (project) => emit('select-project', project),
-      onActiveIndexChange: (index) => {
-        emit('active-index-change', index);
-        // Synchronize fluid dye palette with current project colors
-        if (fluidSim && PROJECTS[index]?.paletteColors) {
-          fluidSim.setPalette(PROJECTS[index].paletteColors);
-        }
-      },
-      onBackendReady: (backend) => emit('backend-ready', backend),
-      onBookOpenChange: (isOpen) => emit('book-open-change', isOpen),
+      onActiveIndexChange: (index) => emit('active-index-change', index),
       onHoverBookChange: (index) => emit('hover-book-change', index)
     });
 
@@ -154,33 +140,20 @@ const wakeUp = () => {
   }
 };
 
-const selectBookFromShelf = (index: number) => {
+const selectProject = (index: number) => {
   if (engine) {
-    engine.selectBookFromShelf(index);
-  }
-  if (fluidSim && PROJECTS[index]?.paletteColors) {
-    fluidSim.setPalette(PROJECTS[index].paletteColors);
-    fluidSim.splat(0.5, 0.5, (Math.random() - 0.5) * 600, (Math.random() - 0.5) * 600);
+    engine.selectProject(index);
   }
 };
 
-const returnBookToShelf = () => {
-  if (engine) {
-    engine.returnBookToShelf();
-  }
-};
-
-const toggleBookRead = () => {
-  if (engine) {
-    engine.toggleBookRead();
-  }
+const resetCarousel = () => {
+  selectProject(0);
 };
 
 defineExpose({
   wakeUp,
-  selectBookFromShelf,
-  returnBookToShelf,
-  toggleBookRead
+  selectProject,
+  resetCarousel
 });
 
 onBeforeUnmount(() => {

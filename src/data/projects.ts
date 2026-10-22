@@ -1,137 +1,183 @@
+export interface ProjectCredit {
+  type: string;
+  name: string;
+  url?: string;
+}
+
 export interface ProjectItem {
   id: string;
   title: string;
+  shortTitle?: string;
   subtitle: string;
   category: string;
   year: string;
   description: string;
-  tags: string[];
-  role: string;
-  paletteTheme: string;
-  accentColor: string;
-  secondaryColor: string;
-  stats: string;
-  liveUrl?: string;
-  githubUrl?: string;
-  paletteColors?: string[];
-  highlights?: string[];
+  color: string;
+  textColor?: string;
+  posterImage: string;
+  credits: ProjectCredit[];
+  galleryImages?: string[];
+  role?: string;
+  artist?: string;
+  label?: string;
+  studio?: string;
 }
 
 export const PROJECTS: ProjectItem[] = [
   {
-    id: 'hydro-core',
-    title: 'Hydro Core',
-    subtitle: 'Eulerian Navier-Stokes GPU Fluid Dynamics & Creative Physics Lab',
-    category: 'Fluid Dynamics & GPU Physics',
-    year: '2025–2026',
+    id: 'm-lettre-infinie',
+    title: 'm - lettre infinie',
+    shortTitle: 'M',
+    subtitle: 'cd & vinyl',
+    category: 'Music & Editorial Design',
+    year: '2019',
+    color: '#cbdde4',
+    textColor: '#ffffff',
+    posterImage: '/images/projects/m-lettre-infinie.png',
     description:
-      'คลังโค้ดจำลองพลศาสตร์ของเหลว (Fluid Dynamics) บน GPU แก้สมการ Incompressible Navier-Stokes แบบเรียลไทม์ 60 FPS ครบทั้ง Advection, Jacobi Poisson Pressure, Vorticity Confinement, Multi-color Dye Diffusion และ Curl Noise Turbulence ตอบสนองต่อเมาส์และแรงสะบัดอย่างเป็นธรรมชาติ',
-    tags: ['WebGL / WebGPU', 'Navier-Stokes', 'GLSL Shaders', 'GPGPU', 'Fluid Physics'],
-    role: 'Lead Physics & Creative Developer',
-    paletteTheme: 'Navier-Stokes Liquid Dynamics',
-    accentColor: '#38bdf8', // Luminous Cyan
-    secondaryColor: '#f43f5e', // Coral Rose
-    stats: 'Eulerian Grid • 60 FPS Real-time Fluid',
-    liveUrl: 'https://github.com/Poohmuhahaha',
-    githubUrl: 'https://github.com/Poohmuhahaha',
-    paletteColors: ['#0f172a', '#38bdf8', '#818cf8', '#f43f5e', '#facc15'],
-    highlights: [
-      'แก้สมการ Navier-Stokes บน GPU เรียลไทม์: Advection, Pressure Projection, Vorticity Confinement',
-      'Multi-pass Ping-Pong FBO Architecture คำนวณความเร็ว (Velocity) และความหนาแน่นสี (Dye) 60fps',
-      'ระบบผสมสีของเหลวตามสัมผัสเมาส์ พร้อมประกายแสงสะท้อนผิวน้ำ (Specular Crest Sheen)',
-      'คลังโค้ดจำลองของเหลวแบบ Open Source พร้อมพารามิเตอร์ Viscosity, Vorticity และ Dissipation ปรับแต่งได้อิสระ'
+      'Influenced by blue hues and the forthcoming birth of his son. The cover\'s repeated "M" forms graphic infinity lines, while handwritten lyrics inside the CD and vinyl add a contrasting personal touch. A challenging yet fulfilling project, creating prideful collaboration with the esteemed artist.',
+    role: 'Graphic Designer',
+    artist: 'Matthieu Chedid',
+    label: 'Labo-M / 3eme bureau',
+    studio: 'Machine Molle',
+    credits: [
+      { type: 'Role', name: 'Graphic Designer' },
+      { type: 'Artist', name: 'Matthieu Chedid', url: 'https://www.instagram.com/m_chedid/' },
+      { type: 'Label', name: 'Labo-M / 3eme bureau', url: 'https://labo-m.net/' },
+      { type: 'Studio', name: 'Machine Molle', url: 'https://www.machinemolle.com/' }
+    ],
+    galleryImages: [
+      '/images/projects/m-lettre-infinie/cover-1.png',
+      '/images/projects/m-lettre-infinie/cover-2.png',
+      '/images/projects/m-lettre-infinie/cover-3.png',
+      '/images/projects/m-lettre-infinie/cover-4.png'
     ]
   },
   {
-    id: 'artibition',
-    title: 'Artibition',
-    subtitle: 'Global Art Exhibition & Curated Gallery Platform',
-    category: 'Creative Platform',
-    year: '2025–2026',
+    id: 'ponpon-mania',
+    title: 'ponpon mania',
+    shortTitle: 'PONPON',
+    subtitle: 'interactive web comic',
+    category: 'Digital Web Comic & Narrative',
+    year: '2024',
+    color: '#fed838',
+    textColor: '#ffffff',
+    posterImage: '/images/projects/ponpon-mania.jpg',
     description:
-      'Digital archive for discovering art exhibitions, world galleries, and museum chronicles with an editorial CMS and Cloudflare R2 storage.',
-    tags: ['Next.js 16', 'WebGPU / 3D', 'Turborepo', 'Bun', 'Prisma'],
-    role: 'Lead Architect & Fullstack',
-    paletteTheme: 'Baroque Fresco Architecture',
-    accentColor: '#c6b18f', // Warm Gilded Beige
-    secondaryColor: '#7a3f34', // Terracotta
-    stats: 'Global Art Discovery • 20+ Galleries',
-    liveUrl: 'https://artibition.art',
-    githubUrl: 'https://github.com/Poohmuhahaha',
-    paletteColors: ['#5a452d', '#312822', '#c6b18f', '#7a3f34'],
-    highlights: [
-      'Curated digital chronicle for global museum exhibitions',
-      'Editorial CMS powered by Next.js 16 & Cloudflare R2',
-      'Dynamic 3D exhibition halls powered by WebGPU'
+      'An interactive web comic following the psychedelic escapades of Ponpon the sheep and his surreal companions. Created in collaboration with creative developers and sound designers.',
+    role: 'Art Direction & Illustration',
+    artist: 'Justine Soulié',
+    studio: 'Patrick Heng & Studio Vandal',
+    credits: [
+      { type: 'Art Direction & Illustration', name: 'Justine Soulié' },
+      { type: 'Creative Development', name: 'Patrick Heng', url: 'https://patrickheng.com' },
+      { type: 'Sound Design', name: 'Studio Vandal' }
     ]
   },
   {
-    id: 'huuk',
-    title: 'Huuk',
-    subtitle: 'Creator Content Planner & Publishing Engine',
-    category: 'Productivity System',
-    year: '2025–Ongoing',
+    id: 'pop-art-car',
+    title: 'pop art car',
+    shortTitle: 'POP ART CAR',
+    subtitle: 'immersive exhibition',
+    category: 'Brand Experience & Event',
+    year: '2024',
+    color: '#0055ff',
+    textColor: '#ffffff',
+    posterImage: '/images/projects/pop-art-car.png',
     description:
-      'Multi-platform editorial system for Meta, TikTok & YouTube creators with real-time markdown revisions, client portals, and hardened Rust backend.',
-    tags: ['Vue 3', 'TypeScript', 'Rust (Axum)', 'Automated Tests', 'Tailwind'],
-    role: 'Co-founder & Frontend Lead',
-    paletteTheme: 'Classical Bust Sculpture',
-    accentColor: '#cd8db0', // Dusky Mauve
-    secondaryColor: '#ebe8e7', // Pale Alabaster
-    stats: '200+ Automated Tests • Sub-5ms API',
-    liveUrl: 'https://github.com/Poohmuhahaha/huuk-tech',
-    githubUrl: 'https://github.com/Poohmuhahaha/huuk-tech',
-    paletteColors: ['#ebe8e7', '#736c60', '#cd8db0', '#a5896f'],
-    highlights: [
-      'Cross-platform creator publishing engine (Meta, TikTok, YouTube)',
-      'Ultra-resilient Rust Axum backend with sub-5ms API latency',
-      '200+ automated integration and unit test coverage'
+      'For the launch of the new Twingo, Renault transformed its Champs-Élysées flagship into an immersive festival of music, dance, and live performances. A vibrant pop identity bringing Twingo\'s playful identity to life.',
+    role: 'Lead Visual Identity',
+    artist: 'Renault France',
+    studio: '17Mars',
+    credits: [
+      { type: 'Visual Direction', name: 'Justine Soulié' },
+      { type: 'Agency', name: '17Mars' },
+      { type: 'Client', name: 'Renault France' }
     ]
   },
   {
-    id: 'pugu',
-    title: 'Pugu',
-    subtitle: 'Multi-Tenant Workspace & Relational Graph View',
-    category: 'Enterprise Data',
-    year: '2025–Ongoing',
+    id: 'miscellaneous',
+    title: 'miscellaneous',
+    shortTitle: 'MISC',
+    subtitle: 'eclectic projects',
+    category: 'Experimental & Print',
+    year: '2023–2025',
+    color: '#fde4f2',
+    textColor: '#252422',
+    posterImage: '/images/projects/miscellaneous.png',
     description:
-      'Structured collaborative workspace featuring typed collection engines, relational visual node graphs, and seat-based enterprise billing.',
-    tags: ['Vue 3', 'Design System', 'Rust API', 'Tauri Desktop', 'Graph View'],
-    role: 'Frontend Systems Engineer',
-    paletteTheme: 'Portrait of Woman with Bowl',
-    accentColor: '#b19c73', // Antique Gold
-    secondaryColor: '#4f5b6b', // Slate Steel Blue
-    stats: 'Interactive Node Graph • Multi-tenant',
-    liveUrl: 'https://github.com/Poohmuhahaha/pugu-tech',
-    githubUrl: 'https://github.com/Poohmuhahaha/pugu-tech',
-    paletteColors: ['#26211a', '#d2cab4', '#b19c73', '#6d4f27', '#4f5b6b'],
-    highlights: [
-      'Multi-tenant collaborative enterprise workspace',
-      'Interactive relational node graph with real-time updates',
-      'Cross-platform desktop distribution powered by Tauri'
+      'A joyful collection of personal explorations, stickers, heart characters on skateboards, textile goods, and playful vector shapes made with lots of love.',
+    role: 'Creative Direction & Illustration',
+    credits: [
+      { type: 'Role', name: 'Illustrator & Designer' },
+      { type: 'Medium', name: 'Screenprint, Risograph, Apparel' }
     ]
   },
   {
-    id: 'teenueng-studio',
-    title: 'Teenueng Studio',
-    subtitle: 'Independent Web & Creative Technology Lab',
-    category: 'Creative Laboratory',
-    year: '2025–Present',
+    id: 'hermes-gift-me-a-dream',
+    title: 'hermès',
+    shortTitle: 'HERMÈS',
+    subtitle: 'promotional film & art direction',
+    category: 'Luxury & Motion Design',
+    year: '2023',
+    color: '#fafaf7',
+    textColor: '#252422',
+    posterImage: '/images/projects/hermes-gift-me-a-dream.png',
     description:
-      'Digital research studio dedicated to crafting high-performance web applications, artistic 3D experiences, and resilient digital architectures.',
-    tags: ['Creative Coding', 'Rust', 'Vue 3', 'Micro-interactions'],
-    role: 'Co-founder',
-    paletteTheme: 'Classical Ruins Architecture',
-    accentColor: '#8d6c45', // Weathered Ochre
-    secondaryColor: '#c3bdb8', // Light Ash Stone
-    stats: '3 In-house Products • Web Excellence',
-    liveUrl: 'https://github.com/Poohmuhahaha',
-    githubUrl: 'https://github.com/Poohmuhahaha',
-    paletteColors: ['#251d13', '#443220', '#685035', '#8d6c45', '#c3bdb8'],
-    highlights: [
-      'Independent creative technology & digital archive lab',
-      'Pioneering tactile 3D WebGPU and procedural architectural shaders',
-      'Zero-dependency reactive micro-interactions'
+      'Dreamlike animated sequences and papercraft illustrations for Hermès holiday campaigns, featuring whimsical clouds, golden helices, and artisan journeys.',
+    role: 'Art Director & Illustrator',
+    artist: 'Hermès Paris',
+    credits: [
+      { type: 'Art Direction', name: 'Justine Soulié' },
+      { type: 'Client', name: 'Hermès Paris' }
+    ]
+  },
+  {
+    id: 'illustrations',
+    title: 'extra',
+    shortTitle: 'EXTRA',
+    subtitle: 'illustrated creations',
+    category: 'Editorial Illustration',
+    year: '2023–2024',
+    color: '#ffe0f2',
+    textColor: '#252422',
+    posterImage: '/images/projects/illustrations.png',
+    description:
+      'Expressive editorial character portraits, risograph prints, and book cover explorations celebrating texture, raw strokes, and vibrant emotions.',
+    role: 'Illustrator',
+    credits: [{ type: 'Illustration', name: 'Justine Soulié' }]
+  },
+  {
+    id: 'typography',
+    title: 'typography',
+    shortTitle: 'TYPO',
+    subtitle: 'compositions and designs',
+    category: 'Custom Type & Lettering',
+    year: '2023',
+    color: '#c8cbdc',
+    textColor: '#252422',
+    posterImage: '/images/projects/typography.png',
+    description:
+      'Custom typographic sculptures, modular display glyphs, kinetic lettering experiments, and poster layouts exploring the tension between legible form and abstract geometry.',
+    role: 'Type Designer & Layout',
+    credits: [{ type: 'Type Design', name: 'Justine Soulié' }]
+  },
+  {
+    id: 'house-of-frog',
+    title: 'house of frog',
+    shortTitle: 'FROG',
+    subtitle: 'immersive exhibition & festival',
+    category: 'Spatial & Experience',
+    year: '2024',
+    color: '#26d07c',
+    textColor: '#ffffff',
+    posterImage: '/images/projects/house-of-frog.png',
+    description:
+      'Immersive festival environment featuring oversized inflatable characters, interactive projection mapping, and playful visual wayfinding.',
+    role: 'Creative Director',
+    credits: [
+      { type: 'Direction', name: 'Justine Soulié' },
+      { type: 'Production', name: 'Renault Twingo Festival' }
     ]
   }
 ];

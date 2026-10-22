@@ -1,46 +1,28 @@
 <template>
   <header class="app-header">
     <div class="header-brand">
-      <span class="brand-name">phuwadon thontra</span>
-      <span class="brand-dot" :class="{ 'is-active': isWebGPU }" :title="backendName"></span>
+      <button class="brand-link" @click="$emit('reset-carousel')">
+        <span>JUSTINE SOULIÉ</span>
+      </button>
     </div>
 
     <nav class="header-nav">
       <button class="nav-link" @click="$emit('open-about')">
-        <span>about</span>
+        <span>ABOUT</span>
         <div class="nav-svg-c">
           <svg width="48" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2.2" />
           </svg>
         </div>
       </button>
-
-      <a
-        href="https://github.com/Poohmuhahaha"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="nav-link"
-        title="GitHub Profile"
-      >
-        <span>github</span>
-        <div class="nav-svg-c">
-          <svg width="52" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2.2" />
-          </svg>
-        </div>
-      </a>
     </nav>
   </header>
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  backendName: string;
-  isWebGPU: boolean;
-}>();
-
 defineEmits<{
   (e: 'open-about'): void;
+  (e: 'reset-carousel'): void;
 }>();
 </script>
 
@@ -54,39 +36,31 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 36px 48px;
+  padding: 34px 48px;
   pointer-events: none;
   font-family: var(--font-body);
 }
 
 .header-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   pointer-events: auto;
 }
 
-.brand-name {
-  font-size: 16px;
-  font-weight: 700;
+.brand-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: #252422;
-  letter-spacing: -0.01em;
-  text-transform: lowercase;
-}
-
-.brand-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #34c759;
-  box-shadow: 0 0 6px rgba(52, 199, 89, 0.6);
-  opacity: 0.85;
+  cursor: pointer;
+  text-decoration: none;
 }
 
 .header-nav {
   display: flex;
   align-items: center;
-  gap: 28px;
   pointer-events: auto;
 }
 
@@ -100,10 +74,9 @@ defineEmits<{
   padding: 4px 0;
   color: #252422;
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: lowercase;
+  letter-spacing: 0.08em;
   text-decoration: none;
   cursor: pointer;
   transition: color 0.2s ease;
@@ -113,7 +86,6 @@ defineEmits<{
   color: #e56b55;
 }
 
-/* Signature Justine Soulié lightning stroke SVG underline */
 .nav-svg-c {
   position: absolute;
   bottom: -4px;
