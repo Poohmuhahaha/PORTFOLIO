@@ -103,8 +103,6 @@ export class WebGPUEngine {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.renderer.setPixelRatio(dpr);
     this.renderer.setClearColor(0x000000, 0);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.container.appendChild(this.renderer.domElement);
 
@@ -132,72 +130,57 @@ export class WebGPUEngine {
     // 5. Studio museum lighting
     this.setupLighting();
 
-    // 6. Shadow-receiving transparent backdrop
-    this.buildBackdrop();
-
-    // 7. Build 3D Tactile Books
+    // 6. Build 3D Tactile Books
     this.buildBooks();
 
-    // 8. Event listeners & animation loop
+    // 7. Event listeners & animation loop
     this.setupEvents();
     this.startLoop();
   }
 
   private setupLighting(): void {
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdcd6cd, 1.35);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdcd6cd, 1.4);
     this.scene.add(hemiLight);
 
-    // Key Museum Directional Spotlight
-    const sunLight = new THREE.DirectionalLight(0xfff6ea, 2.0);
-    sunLight.position.set(-6, 8, 9);
+    // Key Museum Directional Light (Soft diffused studio light)
+    const sunLight = new THREE.DirectionalLight(0xfff6ea, 1.85);
+    sunLight.position.set(-4, 6, 8);
     sunLight.target.position.set(0, 0, 0);
     this.scene.add(sunLight.target);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 1.0;
-    sunLight.shadow.camera.far = 25;
-    sunLight.shadow.camera.left = -10;
-    sunLight.shadow.camera.right = 10;
-    sunLight.shadow.camera.top = 7;
-    sunLight.shadow.camera.bottom = -7;
-    sunLight.shadow.bias = -0.00015;
     this.scene.add(sunLight);
 
     // Warm Ambient Fill Light
-    const fillLight = new THREE.DirectionalLight(0xf5ebe0, 0.7);
-    fillLight.position.set(7, -3, 6);
+    const fillLight = new THREE.DirectionalLight(0xf5ebe0, 0.75);
+    fillLight.position.set(6, -2, 6);
     this.scene.add(fillLight);
-  }
-
-  private buildBackdrop(): void {
-    const wallGeo = new THREE.PlaneGeometry(48, 30);
-    this.geometries.push(wallGeo);
-
-    const wallMat = new THREE.ShadowMaterial({ opacity: 0.18 });
-    this.materials.push(wallMat);
-
-    const wall = new THREE.Mesh(wallGeo, wallMat);
-    wall.position.set(0, 0, -0.6);
-    wall.receiveShadow = true;
-    this.scene.add(wall);
   }
 
   private generateBookShadowTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = 300;
-    canvas.height = 420;
+    canvas.width = 512;
+    canvas.height = 700;
     const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, 300, 420);
+    ctx.clearRect(0, 0, 512, 700);
 
-    ctx.shadowColor = 'rgba(16, 12, 8, 0.45)';
-    ctx.shadowBlur = 32;
+    // Two-stage ultra-soft diffused ambient contact shadow
+    // Pass 1: Broad, gentle ambient occlusion falloff
+    ctx.shadowColor = 'rgba(20, 16, 12, 0.22)';
+    ctx.shadowBlur = 54;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 18;
-
-    ctx.fillStyle = '#000000';
+    ctx.shadowOffsetY = 14;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctx.beginPath();
-    ctx.roundRect(28, 28, 244, 364, 18);
+    ctx.roundRect(56, 56, 512 - 112, 700 - 112, 28);
+    ctx.fill();
+
+    // Pass 2: Centered inner contact shadow
+    ctx.shadowColor = 'rgba(14, 10, 8, 0.32)';
+    ctx.shadowBlur = 24;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 8;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.beginPath();
+    ctx.roundRect(68, 68, 512 - 136, 700 - 136, 22);
     ctx.fill();
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -291,7 +274,6 @@ export class WebGPUEngine {
       this.geometries.push(spineGeo);
       const spineMesh = new THREE.Mesh(spineGeo, backCoverMat);
       spineMesh.position.set(-this.bookW / 2, 0, -this.bookD / 2);
-      spineMesh.castShadow = true;
       bookGroup.add(spineMesh);
 
       // Decorative Gilded Spine Ribs (4 bands)
@@ -309,7 +291,6 @@ export class WebGPUEngine {
       this.geometries.push(backCoverGeo);
       const backCoverMesh = new THREE.Mesh(backCoverGeo, backCoverMat);
       backCoverMesh.position.set(0, 0, -this.bookD);
-      backCoverMesh.castShadow = true;
       bookGroup.add(backCoverMesh);
 
       // 5. Page Block (Inner paper leaves stack)
@@ -326,8 +307,6 @@ export class WebGPUEngine {
       this.geometries.push(pageBlockGeo);
       const pageBlockMesh = new THREE.Mesh(pageBlockGeo, pageMaterials);
       pageBlockMesh.position.set(0.03, 0, -this.bookD / 2 - 0.01);
-      pageBlockMesh.castShadow = true;
-      pageBlockMesh.receiveShadow = true;
       bookGroup.add(pageBlockMesh);
 
       // 6. Front Cover Hinge (Pivoted at spine edge: x = -this.bookW / 2)
@@ -348,24 +327,22 @@ export class WebGPUEngine {
       this.geometries.push(coverBoxGeo);
       const frontCoverMesh = new THREE.Mesh(coverBoxGeo, coverBoxMaterials);
       frontCoverMesh.position.set(this.bookW / 2, 0, 0);
-      frontCoverMesh.castShadow = true;
-      frontCoverMesh.receiveShadow = true;
       frontCoverMesh.userData = { project, index };
       coverHinge.add(frontCoverMesh);
       bookGroup.add(coverHinge);
 
-      // 7. Floating Drop Shadow
-      const shadowGeo = new THREE.PlaneGeometry(this.bookW * 1.15, this.bookH * 1.1);
+      // 7. Soft Ambient Contact Drop Shadow (Moves naturally with book)
+      const shadowGeo = new THREE.PlaneGeometry(this.bookW * 1.26, this.bookH * 1.22);
       this.geometries.push(shadowGeo);
       const shadowMat = new THREE.MeshBasicMaterial({
         map: shadowTex,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.36,
         depthWrite: false
       });
       this.materials.push(shadowMat);
       const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
-      shadowMesh.position.set(0, -0.06, -this.bookD - 0.04);
+      shadowMesh.position.set(0, -0.10, -this.bookD - 0.03);
       bookGroup.add(shadowMesh);
 
       bookGroup.position.set(index * this.bookSpacing, 0, 0);
