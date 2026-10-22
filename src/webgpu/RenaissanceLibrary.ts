@@ -973,6 +973,49 @@ export class RenaissanceLibrary {
     blotter.receiveShadow = true;
     deskGroup.add(blotter);
 
+    // Scholar's Desktop Reading Lectern (Leggio da tavolo)
+    // Carved Tuscan walnut desktop bookstand supporting the open tome squarely on the desk blotter
+    const lecternGroup = new THREE.Group();
+    lecternGroup.position.set(0, deskH + 0.1, 0.48);
+
+    // Lectern Base Footprint resting flush on leather blotter
+    const lBaseGeo = new THREE.BoxGeometry(3.9, 0.04, 2.1);
+    this.geometries.push(lBaseGeo);
+    const lBase = new THREE.Mesh(lBaseGeo, walnutMat);
+    lBase.position.set(0, 0.02, 0);
+    lBase.receiveShadow = true;
+    lecternGroup.add(lBase);
+
+    // Sloping Walnut Reading Board (inclined at -31.5 deg = -0.55 rad matching reading book angle)
+    const lBoardGeo = new THREE.BoxGeometry(3.7, 0.04, 2.15);
+    this.geometries.push(lBoardGeo);
+    const lBoard = new THREE.Mesh(lBoardGeo, walnutMat);
+    lBoard.rotation.x = -0.55;
+    lBoard.position.set(0, 0.58, -0.11);
+    lBoard.castShadow = true;
+    lBoard.receiveShadow = true;
+    lecternGroup.add(lBoard);
+
+    // Carved Side Volute Brackets (Left & Right support wedges)
+    [-1.75, 1.75].forEach((vx) => {
+      const wedgeGeo = new THREE.BoxGeometry(0.08, 0.8, 1.6);
+      this.geometries.push(wedgeGeo);
+      const wedge = new THREE.Mesh(wedgeGeo, walnutMat);
+      wedge.position.set(vx, 0.42, -0.2);
+      wedge.castShadow = true;
+      lecternGroup.add(wedge);
+    });
+
+    // Front Brass Retaining Lip (Secures open book pages squarely from sliding down)
+    const lLipGeo = new THREE.BoxGeometry(3.7, 0.07, 0.06);
+    this.geometries.push(lLipGeo);
+    const lLip = new THREE.Mesh(lLipGeo, brassMat);
+    lLip.position.set(0, 0.05, 0.44);
+    lLip.castShadow = true;
+    lecternGroup.add(lLip);
+
+    deskGroup.add(lecternGroup);
+
     // Turned Renaissance Legs (4 corners) with brass ferrules
     const legGeo = new THREE.CylinderGeometry(0.18, 0.24, deskH - 0.08, 14);
     this.geometries.push(legGeo);

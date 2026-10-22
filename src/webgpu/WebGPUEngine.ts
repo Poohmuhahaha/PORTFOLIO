@@ -406,28 +406,27 @@ export class WebGPUEngine {
   }
 
   private updatePhysics(): void {
-    const time = performance.now() * 0.001;
-
     // 1. Mouse coordinates lerping
     this.mouse.x += (this.targetMouse.x - this.mouse.x) * 0.08;
     this.mouse.y += (this.targetMouse.y - this.mouse.y) * 0.08;
 
     // 2. Camera transition between Shelf Mode and Reading Mode
+    // In reading mode: Camera looks downward at 23 deg directly onto the desk table
     const targetCameraPos = this.isReadingMode
-      ? new THREE.Vector3(0, 0.42, 5.3)
+      ? new THREE.Vector3(0, 0.72, 3.65)
       : new THREE.Vector3(0, 0.58, 6.2);
 
     this.camera.position.lerp(targetCameraPos, 0.06);
-    this.camera.lookAt(0, this.isReadingMode ? -0.32 : -0.22, 0);
+    this.camera.lookAt(0, this.isReadingMode ? -0.65 : -0.22, this.isReadingMode ? 0.35 : 0);
 
     // 3. Subtle room parallax
     if (this.library) {
-      this.library.group.position.y = -this.mouse.y * 0.1;
-      this.library.group.position.x = -this.mouse.x * 0.12;
-      this.library.group.rotation.y = this.mouse.x * 0.012;
+      this.library.group.position.y = -this.mouse.y * 0.08;
+      this.library.group.position.x = -this.mouse.x * 0.10;
+      this.library.group.rotation.y = this.mouse.x * 0.010;
     }
 
-    // 4. Animate each of the 5 books (Shelf Slots vs Reading Blotter)
+    // 4. Animate each of the 5 books (Shelf Slots vs Reading Desk Lectern)
     let anyBookAnimating = false;
 
     this.books.forEach((item) => {
@@ -441,14 +440,14 @@ export class WebGPUEngine {
       let targetRotZ: number;
 
       if (this.isReadingMode && book.index === this.activeFolioIndex) {
-        // ACTIVE TOME: Resting on the leather desk blotter (Zero sinking!)
-        targetPos = new THREE.Vector3(0.0, -0.37, 0.55);
-        targetScale = 1.0;
-        targetRotX = -0.15;
+        // ACTIVE TOME: Firmly resting on the desktop reading lectern (100% Grounded on the table!)
+        targetPos = new THREE.Vector3(0.0, -0.56, 0.37);
+        targetScale = 0.92;
+        targetRotX = -0.55; // Inclined at 31.5 deg matching the wooden lectern board
         targetRotY = this.mouse.x * 0.02;
         targetRotZ = 0.0;
 
-        // Open front cover once it lands on the desk blotter
+        // Open front cover once it lands on the desk lectern
         const distToDesk = book.group.position.distanceTo(targetPos);
         if (distToDesk < 0.35) {
           book.setOpen(1.0);
@@ -456,29 +455,23 @@ export class WebGPUEngine {
           book.setOpen(0.0);
         }
       } else {
-        // BOOK RESTING ON THE OPEN SHELF (Low cradle stand, completely clear!)
+        // BOOK RESTING ON THE SHELF CRADLE (100% Grounded on the table, ZERO vertical floating!)
         book.setOpen(0.0);
         const isHovered = !this.isReadingMode && this.hoveredIndex === book.index;
 
-        // Subtle living organic breathing for each folio on the shelf
-        const breath = Math.sin(time * 1.5 + book.index * 0.85) * 0.012;
-        // Subtle mouse parallax response
-        const mouseParallaxX = (this.mouse.x * 0.9 - slotPos.x * 0.12) * 0.025;
-        const mouseParallaxY = this.mouse.y * 0.015;
-
         if (isHovered) {
-          // Pulled forward smoothly out of its shelf slot towards viewer when hovered
-          targetPos = new THREE.Vector3(slotPos.x, slotPos.y + 0.16 + breath, slotPos.z + 0.45);
-          targetScale = 0.65;
-          targetRotX = -0.09 + mouseParallaxY;
-          targetRotY = (this.mouse.x * 2.2 - slotPos.x) * 0.06;
-          targetRotZ = (slotPos.x - this.mouse.x) * 0.015;
+          // Slide smoothly forward along the wooden shelf rail towards viewer (Y stays grounded on table!)
+          targetPos = new THREE.Vector3(slotPos.x, slotPos.y, slotPos.z + 0.28);
+          targetScale = 0.58; // Constant scale keeps base firmly on deck
+          targetRotX = -0.06;
+          targetRotY = (this.mouse.x * 1.5 - slotPos.x) * 0.04;
+          targetRotZ = 0.0;
         } else {
-          // Resting securely on the low walnut & brass cradle
-          targetPos = new THREE.Vector3(slotPos.x, slotPos.y + breath, slotPos.z);
+          // Firmly seated in its shelf slot on the desk
+          targetPos = new THREE.Vector3(slotPos.x, slotPos.y, slotPos.z);
           targetScale = 0.58;
-          targetRotX = -0.04 + mouseParallaxY;
-          targetRotY = mouseParallaxX;
+          targetRotX = -0.04;
+          targetRotY = 0.0;
           targetRotZ = 0.0;
         }
       }
@@ -521,8 +514,8 @@ export class WebGPUEngine {
         focalZ = hSlot.z + 0.3;
       } else if (this.isReadingMode) {
         focalX = 0;
-        focalY = -0.35;
-        focalZ = 0.6;
+        focalY = -0.55;
+        focalZ = 0.45;
       }
 
       for (let i = 0; i < count; i++) {
