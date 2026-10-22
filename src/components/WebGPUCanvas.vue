@@ -1,8 +1,5 @@
 <template>
   <div class="interactive-canvas-wrapper">
-    <!-- Real-time Navier-Stokes GPU Fluid Dynamics Simulation Canvas -->
-    <canvas ref="fluidCanvasRef" id="fluid-simulation-canvas"></canvas>
-
     <!-- 3D Floating Spring Cards Canvas Container -->
     <div
       ref="containerRef"
@@ -18,7 +15,6 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { DragGesture } from '@use-gesture/vanilla';
 import { WebGPUEngine } from '../webgpu/WebGPUEngine';
-import { FluidSimulation } from '../webgpu/FluidSimulation';
 import type { ProjectItem } from '../data/projects';
 
 const emit = defineEmits<{
@@ -29,23 +25,11 @@ const emit = defineEmits<{
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
-const fluidCanvasRef = ref<HTMLCanvasElement | null>(null);
 let engine: WebGPUEngine | null = null;
-let fluidSim: FluidSimulation | null = null;
 let dragGesture: DragGesture | null = null;
 let lastWheelTime = 0;
 
 onMounted(async () => {
-  // 1. Initialize GPU Fluid Simulation Canvas
-  if (fluidCanvasRef.value) {
-    try {
-      fluidSim = new FluidSimulation(fluidCanvasRef.value);
-    } catch (err) {
-      console.warn('Fluid simulation initialization skipped:', err);
-    }
-  }
-
-  // 2. Initialize 3D Spring Card Engine
   if (containerRef.value) {
     engine = new WebGPUEngine(containerRef.value, {
       onSelectProject: (project) => emit('select-project', project),
@@ -55,28 +39,15 @@ onMounted(async () => {
 
     await engine.init();
 
-    // Attach Touch / Pointer Drag gestures with direct spring momentum & fluid injection
+    // Attach Touch / Pointer Drag gestures with direct spring momentum
     dragGesture = new DragGesture(
       containerRef.value,
-      ({ delta: [dx, dy], xy: [x, y], dragging, last }) => {
+      ({ delta: [dx], xy: [x, y], dragging, last }) => {
         if (!engine || !containerRef.value) return;
         const rect = containerRef.value.getBoundingClientRect();
         const ndcX = ((x - rect.left) / rect.width) * 2 - 1;
         const ndcY = -((y - rect.top) / rect.height) * 2 + 1;
         engine.updatePointer(ndcX, ndcY, dragging);
-
-        // Feed drag velocity to Navier-Stokes fluid simulation
-        if (fluidSim && dragging) {
-          fluidSim.onPointerMove(x, y);
-          if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-            fluidSim.splat(
-              (x - rect.left) / rect.width,
-              1.0 - (y - rect.top) / rect.height,
-              -dx * 60,
-              dy * 60
-            );
-          }
-        }
 
         if (dragging && Math.abs(dx) > 0) {
           engine.applyDragDelta(dx);
@@ -97,11 +68,6 @@ const handlePointerMove = (e: PointerEvent) => {
     const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     engine.updatePointer(ndcX, ndcY);
   }
-
-  // Inject real-time fluid ripples & swirls on pointer movement
-  if (fluidSim) {
-    fluidSim.onPointerMove(e.clientX, e.clientY);
-  }
 };
 
 const handleWheel = (e: WheelEvent) => {
@@ -113,10 +79,6 @@ const handleWheel = (e: WheelEvent) => {
     if (engine) {
       engine.applyWheelDelta(dir);
     }
-    // Splat fluid wave on wheel scroll
-    if (fluidSim && containerRef.value) {
-      fluidSim.splat(0.5, 0.5, dir * 400, (Math.random() - 0.5) * 300);
-    }
     emit('wheel-delta', dir);
   }
 };
@@ -124,13 +86,6 @@ const handleWheel = (e: WheelEvent) => {
 const handleClick = (e: MouseEvent) => {
   if (engine) {
     engine.handleClick(e);
-  }
-  // Splat vibrant fluid burst on click
-  if (fluidSim && containerRef.value) {
-    const rect = containerRef.value.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = 1.0 - (e.clientY - rect.top) / rect.height;
-    fluidSim.splat(x, y, (Math.random() - 0.5) * 800, (Math.random() - 0.5) * 800);
   }
 };
 
@@ -165,10 +120,6 @@ onBeforeUnmount(() => {
     engine.dispose();
     engine = null;
   }
-  if (fluidSim) {
-    fluidSim.dispose();
-    fluidSim = null;
-  }
 });
 </script>
 
@@ -180,15 +131,6 @@ onBeforeUnmount(() => {
   height: 100vh;
   overflow: hidden;
   background-color: var(--bg-primary);
-}
-
-#fluid-simulation-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  pointer-events: none;
 }
 
 #webgpu-canvas-container {

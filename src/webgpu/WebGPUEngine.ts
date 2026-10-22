@@ -388,7 +388,8 @@ export class WebGPUEngine {
 
   public endDrag(): void {
     this.isDragging = false;
-    const targetIdx = Math.max(0, Math.min(PROJECTS.length - 1, Math.round(this.scrollCurrent)));
+    // Infinite loop: snap to nearest integer without clamping bounds
+    const targetIdx = Math.round(this.scrollCurrent);
 
     gsap.to(this, {
       scrollTarget: targetIdx,
@@ -401,8 +402,14 @@ export class WebGPUEngine {
   }
 
   public applyWheelDelta(dir: number): void {
-    const nextIndex = Math.max(0, Math.min(PROJECTS.length - 1, this.scrollTarget + dir));
-    this.selectProject(nextIndex);
+    // Infinite loop: step target continuously
+    this.scrollTarget = Math.round(this.scrollCurrent) + dir;
+    gsap.to(this, {
+      scrollTarget: this.scrollTarget,
+      duration: 0.65,
+      ease: 'power3.out',
+      onUpdate: () => this.wakeUp()
+    });
   }
 
   public updatePointer(ndcX: number, ndcY: number, isDragging: boolean = false): void {
@@ -507,18 +514,28 @@ export class WebGPUEngine {
   }
 
   public selectProject(index: number): void {
-    const clamped = Math.max(0, Math.min(PROJECTS.length - 1, index));
-    this.activeIndex = clamped;
+    const N = PROJECTS.length;
+    const currentNormalized = ((Math.round(this.scrollCurrent) % N) + N) % N;
+
+    // Shortest modular path
+    let diff = (index - currentNormalized) % N;
+    while (diff > N / 2) diff -= N;
+    while (diff < -N / 2) diff += N;
+
+    const target = Math.round(this.scrollCurrent) + diff;
+    this.scrollTarget = target;
 
     gsap.to(this, {
-      scrollTarget: clamped,
+      scrollTarget: target,
       duration: 0.75,
       ease: 'power3.out',
       onUpdate: () => this.wakeUp()
     });
 
+    const norm = ((index % N) + N) % N;
+    this.activeIndex = norm;
     if (this.callbacks.onActiveIndexChange) {
-      this.callbacks.onActiveIndexChange(clamped);
+      this.callbacks.onActiveIndexChange(norm);
     }
     this.wakeUp();
   }
@@ -563,6 +580,8 @@ export class WebGPUEngine {
   }
 
   private updatePhysics(): void {
+    const N = PROJECTS.length;
+
     // 1. Mouse coordinates lerping
     this.mouse.x += (this.targetMouse.x - this.mouse.x) * 0.08;
     this.mouse.y += (this.targetMouse.y - this.mouse.y) * 0.08;
@@ -578,11 +597,22 @@ export class WebGPUEngine {
 
     this.scrollCurrent += this.scrollVelocity;
 
-    const nearestIndex = Math.max(0, Math.min(PROJECTS.length - 1, Math.round(this.scrollCurrent)));
-    if (nearestIndex !== this.activeIndex && Math.abs(this.scrollCurrent - nearestIndex) < 0.4) {
-      this.activeIndex = nearestIndex;
+    // Active project index tracking in infinite loop
+    const normalizedActive = ((Math.round(this.scrollCurrent) % N) + N) % N;
+    if (normalizedActive !== this.activeIndex && Math.abs(this.scrollCurrent - Math.round(this.scrollCurrent)) < 0.4) {
+      this.activeIndex = normalizedActive;
       if (this.callbacks.onActiveIndexChange) {
-        this.callbacks.onActiveIndexChange(nearestIndex);
+        this.callbacks.onActiveIndexChange(normalizedActive);
+      }
+    }
+
+    // Gentle precision re-normalization when idle to avoid coordinate overflow
+    if (!this.isDragging && Math.abs(this.scrollVelocity) < 0.0001 && Math.abs(this.scrollTarget - this.scrollCurrent) < 0.001) {
+      const normalizedCurrent = ((this.scrollCurrent % N) + N) % N;
+      const shift = this.scrollCurrent - normalizedCurrent;
+      if (Math.abs(shift) > 0.01) {
+        this.scrollCurrent = normalizedCurrent;
+        this.scrollTarget = normalizedCurrent;
       }
     }
 
@@ -590,13 +620,17 @@ export class WebGPUEngine {
     const tiltZ = -this.scrollVelocity * 0.045;
     const tiltY = -this.scrollVelocity * 0.065;
 
-    // 4. Update each 3D book's position, arching, tilt & cover swing
+    // 4. Update each 3D book's position with seamless infinite modulo wrapping
     this.books.forEach((item) => {
       const book = item.group;
-      const offset = item.index - this.scrollCurrent;
-      const distFromCenter = Math.abs(offset);
+
+      // Infinite loop modular offset centered around zero [-N/2, N/2]
+      let offset = (item.index - this.scrollCurrent) % N;
+      while (offset > N / 2) offset -= N;
+      while (offset < -N / 2) offset += N;
 
       const targetX = offset * this.bookSpacing;
+      const distFromCenter = Math.abs(offset);
       const isHovered = this.hoveredIndex === item.index;
 
       // Parabolic 3D Arching
@@ -606,7 +640,13 @@ export class WebGPUEngine {
       const mouseTiltX = distFromCenter < 0.6 ? this.mouse.y * 0.05 : 0;
       const mouseTiltY = distFromCenter < 0.6 ? this.mouse.x * 0.08 : 0;
 
-      book.position.x = THREE.MathUtils.lerp(book.position.x, targetX, 0.14);
+      // Prevent book from flying across the screen when wrapping boundaries
+      if (Math.abs(book.position.x - targetX) > this.bookSpacing * 1.8) {
+        book.position.x = targetX;
+      } else {
+        book.position.x = THREE.MathUtils.lerp(book.position.x, targetX, 0.16);
+      }
+
       book.position.y = THREE.MathUtils.lerp(book.position.y, isHovered ? 0.14 : 0.0, 0.12);
       book.position.z = THREE.MathUtils.lerp(book.position.z, targetZ, 0.12);
 
