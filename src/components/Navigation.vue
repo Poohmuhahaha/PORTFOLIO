@@ -2,7 +2,7 @@
   <header class="app-header">
     <div class="header-brand">
       <button class="brand-link" @click="$emit('reset-carousel')">
-        <span>JUSTINE SOULIÉ</span>
+        <span>PHUWADON THONTRA</span>
       </button>
     </div>
 

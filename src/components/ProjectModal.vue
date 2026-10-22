@@ -5,7 +5,7 @@
         <!-- Persistent Top Header -->
         <header class="case-header">
           <button class="brand-link" @click="$emit('close')">
-            <span>JUSTINE SOULIÉ</span>
+            <span>PHUWADON THONTRA</span>
           </button>
 
           <div class="header-actions">
@@ -80,15 +80,55 @@
             </div>
           </section>
 
-          <!-- 3. Physical Artwork & Packaging Gallery (White Background) -->
-          <section v-if="project.galleryImages && project.galleryImages.length" class="case-panel panel-gallery">
-            <div class="gallery-grid">
-              <div
-                v-for="(img, idx) in project.galleryImages"
-                :key="idx"
-                class="gallery-item"
-              >
-                <img :src="img" :alt="`${project.title} detail ${idx + 1}`" class="gallery-img" />
+          <!-- 3. Technical Specifications & Highlights Panel (Editorial Ivory Background) -->
+          <section class="case-panel panel-highlights">
+            <div class="highlights-content">
+              <div class="highlights-header">
+                <span class="highlights-badge">{{ project.category.toUpperCase() }}</span>
+                <h3 class="highlights-title">TECHNICAL HIGHLIGHTS</h3>
+                <p class="highlights-stat" v-if="project.stats">{{ project.stats }}</p>
+              </div>
+
+              <!-- Interactive Fluid Canvas for Hydro Core -->
+              <div v-if="project.id === 'hydro-core'" class="fluid-demo-box">
+                <div class="fluid-demo-header">
+                  <span>LIVE GPU FLUID DYNAMICS (CLICK & DRAG TO SWIRL)</span>
+                </div>
+                <canvas ref="modalFluidCanvas" class="modal-fluid-canvas"></canvas>
+              </div>
+
+              <!-- Bullet Points -->
+              <div class="highlights-list" v-if="project.highlights && project.highlights.length">
+                <div
+                  v-for="(point, idx) in project.highlights"
+                  :key="idx"
+                  class="highlight-item"
+                >
+                  <span class="highlight-bullet">✦</span>
+                  <p class="highlight-text">{{ point }}</p>
+                </div>
+              </div>
+
+              <!-- Live Links -->
+              <div class="action-buttons-row">
+                <a
+                  v-if="project.githubUrl"
+                  :href="project.githubUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="case-action-btn primary"
+                >
+                  <span>GITHUB REPO ↗</span>
+                </a>
+                <a
+                  v-if="project.liveUrl && project.liveUrl !== project.githubUrl"
+                  :href="project.liveUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="case-action-btn secondary"
+                >
+                  <span>LIVE PLATFORM ↗</span>
+                </a>
               </div>
             </div>
           </section>
@@ -119,8 +159,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import { PROJECTS, type ProjectItem } from '../data/projects';
+import { FluidSimulation } from '../webgpu/FluidSimulation';
 
 const props = defineProps<{
   project: ProjectItem | null;
@@ -133,6 +174,8 @@ const emit = defineEmits<{
 }>();
 
 const trackRef = ref<HTMLElement | null>(null);
+const modalFluidCanvas = ref<HTMLCanvasElement | null>(null);
+let modalFluidSim: FluidSimulation | null = null;
 
 const currentIndex = computed(() => {
   if (!props.project) return 0;
@@ -142,6 +185,41 @@ const currentIndex = computed(() => {
 const nextProject = computed(() => {
   const nextIdx = (currentIndex.value + 1) % PROJECTS.length;
   return PROJECTS[nextIdx];
+});
+
+watch(
+  () => props.project,
+  async (newProj) => {
+    if (modalFluidSim) {
+      modalFluidSim.dispose();
+      modalFluidSim = null;
+    }
+
+    if (newProj && newProj.id === 'hydro-core') {
+      await nextTick();
+      if (modalFluidCanvas.value) {
+        try {
+          modalFluidSim = new FluidSimulation(modalFluidCanvas.value);
+          // Splat introductory dye burst
+          setTimeout(() => {
+            if (modalFluidSim) {
+              modalFluidSim.splat(0.5, 0.5, 300, 300);
+            }
+          }, 300);
+        } catch (err) {
+          console.warn('Modal fluid sim init error:', err);
+        }
+      }
+    }
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  if (modalFluidSim) {
+    modalFluidSim.dispose();
+    modalFluidSim = null;
+  }
 });
 
 const handleTrackWheel = (e: WheelEvent) => {
@@ -401,30 +479,149 @@ const goToNext = () => {
   color: rgba(255, 255, 255, 0.4);
 }
 
-/* Panel 3: Gallery (White Background) */
-.panel-gallery {
-  background-color: #ffffff;
+/* Panel 3: Technical Highlights & Specs */
+.panel-highlights {
+  min-width: 540px;
+  max-width: 680px;
+  background-color: #f4f0ed;
+  color: #252422;
   display: flex;
   align-items: center;
-  padding: 80px 80px;
+  justify-content: center;
+  padding: 80px 60px;
+  overflow-y: auto;
 }
 
-.gallery-grid {
+.highlights-content {
   display: flex;
   flex-direction: column;
-  gap: 40px;
-  max-width: 580px;
+  width: 100%;
+  max-width: 520px;
+  gap: 28px;
 }
 
-.gallery-item {
-  width: 100%;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+.highlights-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.gallery-img {
+.highlights-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #8c8080;
+}
+
+.highlights-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: #252422;
+}
+
+.highlights-stat {
+  font-size: 13px;
+  font-weight: 600;
+  color: #635f59;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+/* Fluid Live Demo Box inside Case Study */
+.fluid-demo-box {
   width: 100%;
-  height: auto;
+  background: #0b1626;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.fluid-demo-header {
+  padding: 10px 16px;
+  background: #070e18;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #38bdf8;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.modal-fluid-canvas {
+  width: 100%;
+  height: 220px;
   display: block;
+  cursor: crosshair;
+}
+
+.highlights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.highlight-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.highlight-bullet {
+  color: #c6b18f;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.highlight-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #4a453f;
+}
+
+.action-buttons-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.case-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 22px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.case-action-btn.primary {
+  background: #252422;
+  color: #ffffff;
+}
+
+.case-action-btn.primary:hover {
+  background: #000000;
+  transform: translateY(-2px);
+}
+
+.case-action-btn.secondary {
+  background: transparent;
+  color: #252422;
+  border: 1px solid #252422;
+}
+
+.case-action-btn.secondary:hover {
+  background: #252422;
+  color: #ffffff;
+  transform: translateY(-2px);
 }
 
 /* Panel 4: Next Project */

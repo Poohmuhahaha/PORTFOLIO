@@ -8,33 +8,36 @@ export interface EngineCallbacks {
   onHoverBookChange?: (index: number | null) => void;
 }
 
-interface CardItem {
+interface BookCardItem {
   project: ProjectItem;
   index: number;
-  mesh: THREE.Mesh;
   group: THREE.Group;
-  geometry: THREE.PlaneGeometry;
-  originalPositions: Float32Array;
-  material: THREE.MeshStandardMaterial;
+  coverHinge: THREE.Group;
+  frontCoverMesh: THREE.Mesh;
   hoverProgress: { value: number };
-  localHit: THREE.Vector2;
+  openProgress: { value: number };
 }
 
 /**
- * Patrick Heng's authentic 3D Spring Card Carousel for Justine Soulié
- * - 8 Floating Paper Cloth Project Posters
- * - Authentic paper-normals.jpg normal map with tactile creases & folds
- * - Parabolic 3D carousel arching with velocity-driven tilt & drag momentum
- * - Subdivided cloth mesh vertex deformation
+ * Patrick Heng 3D Spring Physics Carousel with Authentic Tactile PBR Books
+ * - Realistic 3D Hardcover Codex anatomy: Front Cover, Rounded Spine, Gilded Ribs, Page Block Edges, Leather Back Cover
+ * - 2K PBR Textures: Leather Grain, Embossed Gold Borders, Roughness Maps, High-Res Normal Maps
+ * - Interactive Cover Opening: Hovering or selecting a book gently eases the cover open to reveal the illuminated manuscript leaf
+ * - Parabolic 3D Arching with velocity tilt and momentum drag physics
  */
 export class WebGPUEngine {
   private container: HTMLElement;
   private renderer!: THREE.WebGLRenderer;
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
-  private cards: CardItem[] = [];
+  private books: BookCardItem[] = [];
 
-  private paperNormalTexture: THREE.Texture | null = null;
+  // PBR Shared Textures
+  private roughnessTexture!: THREE.Texture;
+  private normalTexture!: THREE.Texture;
+  private backCoverTexture!: THREE.Texture;
+  private pageEdgeTexture!: THREE.Texture;
+
   private callbacks: EngineCallbacks;
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
@@ -47,7 +50,12 @@ export class WebGPUEngine {
   public scrollTarget = 0;
   public scrollVelocity = 0;
   public isDragging = false;
-  private readonly cardSpacing = 3.65;
+  private readonly bookSpacing = 3.85;
+
+  // Book Dimensions
+  private readonly bookW = 2.75;
+  private readonly bookH = 3.85;
+  private readonly bookD = 0.22;
 
   // Animation loop & idle state
   private rafId: number | null = null;
@@ -72,9 +80,9 @@ export class WebGPUEngine {
     // 1. Scene Setup
     this.scene = new THREE.Scene();
 
-    // 2. Camera Setup (Calibrated for Justine Soulié's poster aspect ratio)
+    // 2. Camera Setup (Perspective tuned for museum book showcase)
     this.camera = new THREE.PerspectiveCamera(44, width / height, 0.1, 80);
-    this.camera.position.set(0, 0, 7.5);
+    this.camera.position.set(0, 0, 7.6);
     this.camera.lookAt(0, 0, 0);
 
     // 3. Renderer with transparent background
@@ -92,18 +100,26 @@ export class WebGPUEngine {
 
     this.container.appendChild(this.renderer.domElement);
 
-    // 4. Load authentic Patrick Heng paper normal map
+    // 4. Load PBR Textures
     const texLoader = new THREE.TextureLoader();
-    this.paperNormalTexture = texLoader.load('/textures/paper-normals.jpg', (tex) => {
+
+    this.roughnessTexture = texLoader.load('/textures/book-cover-roughness.jpg', () => this.wakeUp());
+    this.textures.push(this.roughnessTexture);
+
+    this.normalTexture = texLoader.load('/textures/book-normal-hd.jpg', () => this.wakeUp());
+    this.textures.push(this.normalTexture);
+
+    this.backCoverTexture = texLoader.load('/textures/book-back.jpg', () => this.wakeUp());
+    this.backCoverTexture.colorSpace = THREE.SRGBColorSpace;
+    this.textures.push(this.backCoverTexture);
+
+    this.pageEdgeTexture = texLoader.load('/textures/page-edge.jpg', (tex) => {
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.RepeatWrapping;
-      this.cards.forEach((c) => {
-        c.material.normalMap = tex;
-        c.material.needsUpdate = true;
-      });
+      tex.repeat.set(4, 1);
       this.wakeUp();
     });
-    this.textures.push(this.paperNormalTexture);
+    this.textures.push(this.pageEdgeTexture);
 
     // 5. Studio museum lighting
     this.setupLighting();
@@ -111,8 +127,8 @@ export class WebGPUEngine {
     // 6. Shadow-receiving transparent backdrop
     this.buildBackdrop();
 
-    // 7. Build floating paper posters
-    this.buildCards();
+    // 7. Build 3D Tactile Books
+    this.buildBooks();
 
     // 8. Event listeners & animation loop
     this.setupEvents();
@@ -120,11 +136,12 @@ export class WebGPUEngine {
   }
 
   private setupLighting(): void {
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe8e2dc, 1.25);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xdcd6cd, 1.35);
     this.scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff9f2, 1.7);
-    sunLight.position.set(-6, 9, 8);
+    // Key Museum Directional Spotlight
+    const sunLight = new THREE.DirectionalLight(0xfff6ea, 2.0);
+    sunLight.position.set(-6, 8, 9);
     sunLight.target.position.set(0, 0, 0);
     this.scene.add(sunLight.target);
     sunLight.castShadow = true;
@@ -139,39 +156,40 @@ export class WebGPUEngine {
     sunLight.shadow.bias = -0.00015;
     this.scene.add(sunLight);
 
-    const fillLight = new THREE.DirectionalLight(0xf5ebe0, 0.6);
+    // Warm Ambient Fill Light
+    const fillLight = new THREE.DirectionalLight(0xf5ebe0, 0.7);
     fillLight.position.set(7, -3, 6);
     this.scene.add(fillLight);
   }
 
   private buildBackdrop(): void {
-    const wallGeo = new THREE.PlaneGeometry(42, 28);
+    const wallGeo = new THREE.PlaneGeometry(48, 30);
     this.geometries.push(wallGeo);
 
-    const wallMat = new THREE.ShadowMaterial({ opacity: 0.14 });
+    const wallMat = new THREE.ShadowMaterial({ opacity: 0.18 });
     this.materials.push(wallMat);
 
     const wall = new THREE.Mesh(wallGeo, wallMat);
-    wall.position.set(0, 0, -0.45);
+    wall.position.set(0, 0, -0.6);
     wall.receiveShadow = true;
     this.scene.add(wall);
   }
 
-  private generatePaperShadowTexture(): THREE.CanvasTexture {
+  private generateBookShadowTexture(): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 340;
+    canvas.width = 300;
+    canvas.height = 420;
     const ctx = canvas.getContext('2d')!;
-    ctx.clearRect(0, 0, 256, 340);
+    ctx.clearRect(0, 0, 300, 420);
 
-    ctx.shadowColor = 'rgba(24, 18, 14, 0.38)';
-    ctx.shadowBlur = 28;
+    ctx.shadowColor = 'rgba(16, 12, 8, 0.45)';
+    ctx.shadowBlur = 32;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 14;
+    ctx.shadowOffsetY = 18;
 
     ctx.fillStyle = '#000000';
     ctx.beginPath();
-    ctx.roundRect(24, 24, 208, 292, 16);
+    ctx.roundRect(28, 28, 244, 364, 18);
     ctx.fill();
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -179,70 +197,165 @@ export class WebGPUEngine {
     return tex;
   }
 
-  private buildCards(): void {
-    const cardW = 3.05;
-    const cardH = 4.15;
-    const shadowTex = this.generatePaperShadowTexture();
+  private buildBooks(): void {
     const texLoader = new THREE.TextureLoader();
+    const shadowTex = this.generateBookShadowTexture();
+
+    // Shared Page Block Edge Material
+    const pageEdgeMat = new THREE.MeshStandardMaterial({
+      map: this.pageEdgeTexture,
+      roughness: 0.85,
+      metalness: 0.08
+    });
+    this.materials.push(pageEdgeMat);
 
     PROJECTS.forEach((project, index) => {
-      const cardGroup = new THREE.Group();
+      const bookGroup = new THREE.Group();
 
-      // 1. Load actual project artwork poster
-      const posterTex = texLoader.load(project.posterImage, () => this.wakeUp());
-      posterTex.colorSpace = THREE.SRGBColorSpace;
-      this.textures.push(posterTex);
+      // 1. Textures for this project
+      const coverTex = texLoader.load(project.posterImage || `/textures/projects/${project.id}-cover.jpg`, () =>
+        this.wakeUp()
+      );
+      coverTex.colorSpace = THREE.SRGBColorSpace;
+      this.textures.push(coverTex);
 
-      // 2. High-performance PBR material with authentic paper normals
-      const paperMat = new THREE.MeshStandardMaterial({
-        map: posterTex,
-        normalMap: this.paperNormalTexture,
-        normalScale: new THREE.Vector2(0.85, 0.85),
-        roughness: 0.84,
-        metalness: 0.02,
-        side: THREE.DoubleSide
+      const innerTex = texLoader.load(`/textures/projects/${project.id}-inner.jpg`, () => this.wakeUp());
+      innerTex.colorSpace = THREE.SRGBColorSpace;
+      this.textures.push(innerTex);
+
+      // 2. Front Cover PBR Material (Leather grain + Embossed Gold Leaf + Normal map)
+      const frontCoverMat = new THREE.MeshStandardMaterial({
+        map: coverTex,
+        roughnessMap: this.roughnessTexture,
+        normalMap: this.normalTexture,
+        normalScale: new THREE.Vector2(0.9, 0.9),
+        roughness: 0.62,
+        metalness: 0.18
       });
-      this.materials.push(paperMat);
+      this.materials.push(frontCoverMat);
 
-      // 3. Subdivided paper mesh (32x32) for tactile cloth ripple & parabolic curve
-      const frontPlaneGeo = new THREE.PlaneGeometry(cardW, cardH, 32, 32);
-      this.geometries.push(frontPlaneGeo);
-      const originalPositions = new Float32Array(frontPlaneGeo.attributes.position.array);
+      // Inner Verso leaf material
+      const innerLeafMat = new THREE.MeshStandardMaterial({
+        map: innerTex,
+        roughness: 0.84,
+        metalness: 0.02
+      });
+      this.materials.push(innerLeafMat);
 
-      const frontMesh = new THREE.Mesh(frontPlaneGeo, paperMat);
-      frontMesh.position.set(0, 0, 0.02);
-      frontMesh.castShadow = true;
-      frontMesh.receiveShadow = true;
-      frontMesh.userData = { project, index };
-      cardGroup.add(frontMesh);
+      // Leather Spine & Back Cover Material
+      const backCoverMat = new THREE.MeshStandardMaterial({
+        map: this.backCoverTexture,
+        roughnessMap: this.roughnessTexture,
+        normalMap: this.normalTexture,
+        normalScale: new THREE.Vector2(0.8, 0.8),
+        roughness: 0.65,
+        metalness: 0.1
+      });
+      this.materials.push(backCoverMat);
 
-      // 4. Soft floating paper drop shadow
-      const shadowGeo = new THREE.PlaneGeometry(cardW * 1.1, cardH * 1.08);
+      // 3. Central Spine at x = -this.bookW / 2
+      const spineRadius = this.bookD / 2;
+      const spineGeo = new THREE.CylinderGeometry(
+        spineRadius,
+        spineRadius,
+        this.bookH,
+        24,
+        1,
+        false,
+        -Math.PI / 2,
+        Math.PI
+      );
+      this.geometries.push(spineGeo);
+      const spineMesh = new THREE.Mesh(spineGeo, backCoverMat);
+      spineMesh.position.set(-this.bookW / 2, 0, -this.bookD / 2);
+      spineMesh.castShadow = true;
+      bookGroup.add(spineMesh);
+
+      // Decorative Gilded Spine Ribs (4 bands)
+      for (let r = 0; r < 4; r++) {
+        const ribGeo = new THREE.TorusGeometry(spineRadius + 0.015, 0.024, 8, 20, Math.PI);
+        this.geometries.push(ribGeo);
+        const rib = new THREE.Mesh(ribGeo, frontCoverMat);
+        rib.rotation.y = Math.PI / 2;
+        rib.position.set(-this.bookW / 2, -this.bookH * 0.36 + r * (this.bookH * 0.24), -this.bookD / 2);
+        bookGroup.add(rib);
+      }
+
+      // 4. Back Cover (Rigid bottom plate)
+      const backCoverGeo = new THREE.BoxGeometry(this.bookW, this.bookH, 0.04);
+      this.geometries.push(backCoverGeo);
+      const backCoverMesh = new THREE.Mesh(backCoverGeo, backCoverMat);
+      backCoverMesh.position.set(0, 0, -this.bookD);
+      backCoverMesh.castShadow = true;
+      bookGroup.add(backCoverMesh);
+
+      // 5. Page Block (Inner paper leaves stack)
+      // Front face displays illuminated recto overview, sides display striated page edges
+      const pageMaterials = [
+        pageEdgeMat, // right (+x)
+        pageEdgeMat, // left (-x)
+        pageEdgeMat, // top (+y)
+        pageEdgeMat, // bottom (-y)
+        innerLeafMat, // front (+z): illuminated recto page
+        pageEdgeMat // back (-z)
+      ];
+      const pageBlockGeo = new THREE.BoxGeometry(this.bookW - 0.08, this.bookH - 0.1, this.bookD - 0.05);
+      this.geometries.push(pageBlockGeo);
+      const pageBlockMesh = new THREE.Mesh(pageBlockGeo, pageMaterials);
+      pageBlockMesh.position.set(0.03, 0, -this.bookD / 2 - 0.01);
+      pageBlockMesh.castShadow = true;
+      pageBlockMesh.receiveShadow = true;
+      bookGroup.add(pageBlockMesh);
+
+      // 6. Front Cover Hinge (Pivoted at spine edge: x = -this.bookW / 2)
+      const coverHinge = new THREE.Group();
+      coverHinge.position.set(-this.bookW / 2, 0, 0);
+
+      // Front Cover Board materials:
+      // [+x, -x, +y, -y, +z (Front cover art), -z (Inner leaf)]
+      const coverBoxMaterials = [
+        backCoverMat, // right
+        backCoverMat, // left
+        backCoverMat, // top
+        backCoverMat, // bottom
+        frontCoverMat, // front cover
+        innerLeafMat // inside verso leaf
+      ];
+      const coverBoxGeo = new THREE.BoxGeometry(this.bookW, this.bookH, 0.04);
+      this.geometries.push(coverBoxGeo);
+      const frontCoverMesh = new THREE.Mesh(coverBoxGeo, coverBoxMaterials);
+      frontCoverMesh.position.set(this.bookW / 2, 0, 0);
+      frontCoverMesh.castShadow = true;
+      frontCoverMesh.receiveShadow = true;
+      frontCoverMesh.userData = { project, index };
+      coverHinge.add(frontCoverMesh);
+      bookGroup.add(coverHinge);
+
+      // 7. Floating Drop Shadow
+      const shadowGeo = new THREE.PlaneGeometry(this.bookW * 1.15, this.bookH * 1.1);
       this.geometries.push(shadowGeo);
       const shadowMat = new THREE.MeshBasicMaterial({
         map: shadowTex,
         transparent: true,
-        opacity: 0.24,
+        opacity: 0.28,
         depthWrite: false
       });
       this.materials.push(shadowMat);
       const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
-      shadowMesh.position.set(0, -0.05, -0.02);
-      cardGroup.add(shadowMesh);
+      shadowMesh.position.set(0, -0.06, -this.bookD - 0.04);
+      bookGroup.add(shadowMesh);
 
-      cardGroup.position.set(index * this.cardSpacing, 0, 0);
-      this.scene.add(cardGroup);
+      bookGroup.position.set(index * this.bookSpacing, 0, 0);
+      this.scene.add(bookGroup);
 
-      this.cards.push({
+      this.books.push({
         project,
         index,
-        mesh: frontMesh,
-        group: cardGroup,
-        geometry: frontPlaneGeo,
-        originalPositions,
-        material: paperMat,
+        group: bookGroup,
+        coverHinge,
+        frontCoverMesh,
         hoverProgress: { value: 0 },
-        localHit: new THREE.Vector2(0, 0)
+        openProgress: { value: 0 }
       });
     });
   }
@@ -304,7 +417,7 @@ export class WebGPUEngine {
 
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const intersects = this.raycaster.intersectObjects(
-      this.cards.map((c) => c.mesh),
+      this.books.map((b) => b.frontCoverMesh),
       true
     );
 
@@ -316,32 +429,37 @@ export class WebGPUEngine {
       }
       if (obj && obj.userData?.index !== undefined) {
         newHovered = obj.userData.index as number;
-        if (intersects[0].point) {
-          const card = this.cards[newHovered];
-          card.localHit.set(
-            intersects[0].point.x - card.group.position.x,
-            intersects[0].point.y - card.group.position.y
-          );
-        }
       }
     }
 
     if (newHovered !== this.hoveredIndex) {
       if (newHovered !== null) {
-        const targetCard = this.cards[newHovered];
-        gsap.to(targetCard.hoverProgress, {
+        const targetBook = this.books[newHovered];
+        gsap.to(targetBook.hoverProgress, {
           value: 1.0,
           duration: 0.45,
+          ease: 'power2.out',
+          overwrite: 'auto'
+        });
+        gsap.to(targetBook.openProgress, {
+          value: 0.22, // Crack cover open 22% on hover
+          duration: 0.5,
           ease: 'power2.out',
           overwrite: 'auto'
         });
       }
 
       if (this.hoveredIndex !== null && this.hoveredIndex !== newHovered) {
-        const prevCard = this.cards[this.hoveredIndex];
-        gsap.to(prevCard.hoverProgress, {
+        const prevBook = this.books[this.hoveredIndex];
+        gsap.to(prevBook.hoverProgress, {
           value: 0.0,
-          duration: 0.65,
+          duration: 0.55,
+          ease: 'power2.inOut',
+          overwrite: 'auto'
+        });
+        gsap.to(prevBook.openProgress, {
+          value: 0.0, // Close cover
+          duration: 0.45,
           ease: 'power2.inOut',
           overwrite: 'auto'
         });
@@ -365,7 +483,7 @@ export class WebGPUEngine {
 
     this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
     const intersects = this.raycaster.intersectObjects(
-      this.cards.map((c) => c.mesh),
+      this.books.map((b) => b.frontCoverMesh),
       true
     );
 
@@ -445,8 +563,6 @@ export class WebGPUEngine {
   }
 
   private updatePhysics(): void {
-    const time = performance.now() * 0.001;
-
     // 1. Mouse coordinates lerping
     this.mouse.x += (this.targetMouse.x - this.mouse.x) * 0.08;
     this.mouse.y += (this.targetMouse.y - this.mouse.y) * 0.08;
@@ -470,58 +586,40 @@ export class WebGPUEngine {
       }
     }
 
-    // 3. Signature Velocity Tilt
+    // 3. Signature Velocity Tilt & Drag Lean
     const tiltZ = -this.scrollVelocity * 0.045;
     const tiltY = -this.scrollVelocity * 0.065;
 
-    // 4. Update each card's 3D position, depth, tilt & cloth mesh deformation
-    this.cards.forEach((item) => {
-      const card = item.group;
+    // 4. Update each 3D book's position, arching, tilt & cover swing
+    this.books.forEach((item) => {
+      const book = item.group;
       const offset = item.index - this.scrollCurrent;
       const distFromCenter = Math.abs(offset);
 
-      const targetX = offset * this.cardSpacing;
+      const targetX = offset * this.bookSpacing;
       const isHovered = this.hoveredIndex === item.index;
-      const targetZ = (isHovered ? 0.32 : 0.0) - Math.min(distFromCenter * 0.42, 0.85);
-      const targetScale = Math.max(0.86, 1.0 - distFromCenter * 0.12);
 
-      const mouseTiltX = distFromCenter < 0.6 ? this.mouse.y * 0.06 : 0;
+      // Parabolic 3D Arching
+      const targetZ = (isHovered ? 0.35 : 0.0) - Math.min(distFromCenter * 0.45, 1.1);
+      const targetScale = Math.max(0.85, 1.0 - distFromCenter * 0.08);
+
+      const mouseTiltX = distFromCenter < 0.6 ? this.mouse.y * 0.05 : 0;
       const mouseTiltY = distFromCenter < 0.6 ? this.mouse.x * 0.08 : 0;
 
-      card.position.x = THREE.MathUtils.lerp(card.position.x, targetX, 0.14);
-      card.position.y = THREE.MathUtils.lerp(card.position.y, isHovered ? 0.12 : 0.0, 0.12);
-      card.position.z = THREE.MathUtils.lerp(card.position.z, targetZ, 0.12);
+      book.position.x = THREE.MathUtils.lerp(book.position.x, targetX, 0.14);
+      book.position.y = THREE.MathUtils.lerp(book.position.y, isHovered ? 0.14 : 0.0, 0.12);
+      book.position.z = THREE.MathUtils.lerp(book.position.z, targetZ, 0.12);
 
-      card.rotation.z = THREE.MathUtils.lerp(card.rotation.z, tiltZ, 0.1);
-      card.rotation.y = THREE.MathUtils.lerp(card.rotation.y, tiltY + mouseTiltY, 0.1);
-      card.rotation.x = THREE.MathUtils.lerp(card.rotation.x, mouseTiltX, 0.1);
+      // Book overall rotation (Perspective tilt showing thickness and spine)
+      book.rotation.z = THREE.MathUtils.lerp(book.rotation.z, tiltZ, 0.1);
+      book.rotation.y = THREE.MathUtils.lerp(book.rotation.y, tiltY + mouseTiltY, 0.1);
+      book.rotation.x = THREE.MathUtils.lerp(book.rotation.x, mouseTiltX, 0.1);
 
-      card.scale.setScalar(THREE.MathUtils.lerp(card.scale.x, targetScale, 0.12));
+      book.scale.setScalar(THREE.MathUtils.lerp(book.scale.x, targetScale, 0.12));
 
-      // 5. Tactile 3D cloth paper wave deformation
-      const posAttr = item.geometry.attributes.position;
-      const orig = item.originalPositions;
-      const vel = this.scrollVelocity;
-      const hover = item.hoverProgress.value;
-
-      const ndcX = card.position.x / 4.5;
-      const clampedX = Math.max(-1.0, Math.min(1.0, ndcX));
-      const normX = (clampedX + 1.0) * 0.5;
-      const parabola = 4.0 * normX * (1.0 - normX);
-      const archZ = parabola * 0.32;
-
-      for (let v = 0; v < posAttr.count; v++) {
-        const ox = orig[v * 3];
-        const oy = orig[v * 3 + 1];
-
-        const dragWave = Math.sin(oy * 1.8 + time * 2.8) * vel * 0.3;
-        const paperCurl = -Math.sin(oy * 8.0 + item.index) * 0.012;
-        const hDist = Math.hypot(ox - item.localHit.x, oy - item.localHit.y);
-        const hoverPress = Math.max(0, 1.0 - hDist / 1.5) * hover * -0.055;
-
-        posAttr.setZ(v, archZ + dragWave + paperCurl + hoverPress);
-      }
-      posAttr.needsUpdate = true;
+      // 5. Cover hinge rotation (Cracks open smoothly on hover)
+      const targetCoverAngle = -item.openProgress.value * (Math.PI * 0.45);
+      item.coverHinge.rotation.y = THREE.MathUtils.lerp(item.coverHinge.rotation.y, targetCoverAngle, 0.14);
     });
   }
 
@@ -535,7 +633,7 @@ export class WebGPUEngine {
     this.geometries.forEach((g) => g.dispose());
     this.materials.forEach((m) => m.dispose());
     this.textures.forEach((t) => t.dispose());
-    this.cards = [];
+    this.books = [];
 
     this.renderer.dispose();
   }

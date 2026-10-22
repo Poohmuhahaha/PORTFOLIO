@@ -10,8 +10,8 @@
 
           <!-- Header -->
           <div class="about-brand">
-            <h2 class="about-name">JUSTINE SOULIÉ</h2>
-            <p class="about-tag">Art Director & Illustrator based in Paris</p>
+            <h2 class="about-name">PHUWADON THONTRA</h2>
+            <p class="about-tag">Lead Creative Physics & WebGPU Shader Developer</p>
           </div>
 
           <!-- Divider -->
@@ -24,37 +24,39 @@
           <!-- Bio -->
           <div class="about-bio">
             <p>
-              I'm Justine Soulié, a French multidisciplinary designer and art director passionate about people's stories and ideas. I strive to translate narratives into meaningful, bold, and playful visual worlds across branding, motion, digital illustration, and physical packaging.
+              I am Phuwadon Thontra (Pooh), a Lead Creative Physics and WebGPU Shader Developer dedicated to engineering real-time Eulerian Navier-Stokes fluid dynamics, tactile PBR graphics, and resilient digital architectures.
             </p>
             <p>
-              Curious and eager to explore new mediums, I collaborate closely with creative technologists, studios, and cultural artists worldwide.
+              My work converges computational fluid dynamics, custom GLSL shaders, and tactile 3D interactions. From Hydro Core's real-time GPU fluid physics to architectural museum archives, I build immersive web experiences engineered for 60–120 FPS performance.
             </p>
           </div>
 
-          <!-- Selected Clients -->
+          <!-- Core Innovations & Areas -->
           <div class="about-section">
-            <h3 class="section-title">SELECTED CLIENTS</h3>
+            <h3 class="section-title">CORE SPECIALIZATIONS</h3>
             <p class="clients-list">
-              Hermès • Renault France • Matthieu Chedid (-M-) • Labo-M • 3ème Bureau • 17Mars • Machine Molle • Prismic • Studio Vandal
+              Eulerian Navier-Stokes Fluid Dynamics • WebGPU / WebGL Custom Shaders • GPGPU Double-FBO Architecture • Procedural PBR Lighting • Patrick Heng Spring Physics • Rust & Axum Microservices • Vue 3 & Next.js 16
             </p>
           </div>
 
           <!-- Contact & Credits -->
           <div class="about-footer">
             <div class="footer-col">
-              <span class="col-label">CONTACT</span>
-              <a href="mailto:contact@justinesoulie.fr" class="footer-link">contact@justinesoulie.fr</a>
+              <span class="col-label">GITHUB & ARCHIVE</span>
+              <a href="https://github.com/Poohmuhahaha" target="_blank" rel="noopener noreferrer" class="footer-link">github.com/Poohmuhahaha ↗</a>
             </div>
             <div class="footer-col">
-              <span class="col-label">FOLLOW</span>
+              <span class="col-label">FLAGSHIP PROJECTS</span>
               <div class="links-row">
-                <a href="https://instagram.com/justinesoulie" target="_blank" rel="noopener noreferrer" class="footer-link">Instagram ↗</a>
-                <a href="https://behance.net/justinesoulie" target="_blank" rel="noopener noreferrer" class="footer-link">Behance ↗</a>
+                <span class="footer-link">Hydro Core</span>
+                <span class="footer-link">Artibition</span>
+                <span class="footer-link">Huuk</span>
+                <span class="footer-link">Pugu</span>
               </div>
             </div>
             <div class="footer-col">
-              <span class="col-label">CREDITS</span>
-              <span class="col-text">Creative Development by <a href="https://patrickheng.com" target="_blank" rel="noopener noreferrer" class="footer-link">Patrick Heng</a></span>
+              <span class="col-label">DESIGN INSPIRATION</span>
+              <span class="col-text">Patrick Heng 3D Physics & Justine Soulié Editorial Aesthetic</span>
             </div>
           </div>
         </div>
