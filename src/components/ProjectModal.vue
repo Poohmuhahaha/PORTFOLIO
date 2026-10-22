@@ -191,9 +191,22 @@ const nextProject = computed(() => {
   return list[nextIdx] || list[0];
 });
 
+const onKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    e.preventDefault();
+    emit('close');
+  }
+};
+
 watch(
   () => props.project,
   async (newProj) => {
+    if (newProj) {
+      window.addEventListener('keydown', onKeyDown);
+    } else {
+      window.removeEventListener('keydown', onKeyDown);
+    }
+
     if (modalFluidSim) {
       modalFluidSim.dispose();
       modalFluidSim = null;
@@ -220,6 +233,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeyDown);
   if (modalFluidSim) {
     modalFluidSim.dispose();
     modalFluidSim = null;

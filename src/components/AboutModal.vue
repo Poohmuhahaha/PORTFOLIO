@@ -66,13 +66,38 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { watch, onBeforeUnmount } from 'vue';
+
+const props = defineProps<{
   show: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'close'): void;
 }>();
+
+const onKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    e.preventDefault();
+    emit('close');
+  }
+};
+
+watch(
+  () => props.show,
+  (val) => {
+    if (val) {
+      window.addEventListener('keydown', onKeyDown);
+    } else {
+      window.removeEventListener('keydown', onKeyDown);
+    }
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeyDown);
+});
 </script>
 
 <style scoped>

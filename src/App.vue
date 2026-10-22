@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import WebGPUCanvas from './components/WebGPUCanvas.vue';
 import Navigation from './components/Navigation.vue';
 import ProjectModal from './components/ProjectModal.vue';
@@ -63,11 +63,28 @@ const activeIndex = ref<number>(0);
 const selectedProject = ref<ProjectItem | null>(null);
 const showAboutModal = ref<boolean>(false);
 
+const handleGlobalKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    if (showAboutModal.value) {
+      showAboutModal.value = false;
+    } else if (selectedProject.value) {
+      onCloseProject();
+    } else if (webgpuCanvasRef.value) {
+      webgpuCanvasRef.value.closeBook();
+    }
+  }
+};
+
 onMounted(async () => {
+  window.addEventListener('keydown', handleGlobalKeydown);
   const liveProjects = await fetchProjects();
   if (liveProjects && liveProjects.length > 0) {
     projects.value = liveProjects;
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown);
 });
 
 const currentProject = computed<ProjectItem>(() => {
