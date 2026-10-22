@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { WebGPURenderer } from 'three/webgpu';
 import gsap from 'gsap';
 import { PROJECTS, type ProjectItem } from '../data/projects';
-import { createLiquidWaveMaterial } from './LiquidWaveShader';
 
 export interface EngineCallbacks {
   onSelectProject?: (project: ProjectItem) => void;
@@ -17,20 +16,23 @@ interface CardItem {
   index: number;
   mesh: THREE.Mesh;
   group: THREE.Group;
-  liquidMaterial: THREE.ShaderMaterial;
+  geometry: THREE.PlaneGeometry;
+  originalPositions: Float32Array;
+  material: THREE.MeshStandardMaterial;
   hoverProgress: { value: number };
+  localHit: THREE.Vector2;
 }
 
 /**
  * Patrick Heng & Justine Soulié inspired WebGL/WebGPU Spring Card Engine
- * - Custom GLSL Crumpled Paper & Fluid Wave Distortion Shader (authentic paper-normals.jpg)
- * - GSAP-driven fluid dampening, inertia & chromatic aberration (RGB Shift)
- * - Floating paper cloth posters with realistic drop shadows
- * - Direct Drag & Flick Momentum with Spring Physics
+ * - Floating paper cloth posters with authentic paper normal map (paper-normals.jpg)
+ * - PBR lighting with soft drop shadows and tactile paper curls
+ * - Parabolic arching carousel with spring inertia & velocity tilt
+ * - Bulletproof rendering with WebGPU and WebGL 2.0 automatic fallback
  */
 export class WebGPUEngine {
   private container: HTMLElement;
-  private renderer!: WebGPURenderer;
+  private renderer!: WebGPURenderer | THREE.WebGLRenderer;
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private cards: CardItem[] = [];
@@ -51,7 +53,7 @@ export class WebGPUEngine {
   public scrollTarget = 0;
   public scrollVelocity = 0;
   public isDragging = false;
-  private readonly cardSpacing = 3.82;
+  private readonly cardSpacing = 3.75;
 
   // Animation & Idle Loop
   private rafId: number | null = null;
@@ -73,47 +75,62 @@ export class WebGPUEngine {
     const width = this.container.clientWidth || window.innerWidth;
     const height = this.container.clientHeight || window.innerHeight;
 
-    // 1. Scene with transparent background to allow Fluid Dynamics simulation to swirl underneath
+    // 1. Scene setup
     this.scene = new THREE.Scene();
 
     // 2. Camera Setup (Optimal FOV for vertical editorial posters)
-    this.camera = new THREE.PerspectiveCamera(44, width / height, 0.1, 80);
-    this.camera.position.set(0, 0, 7.8);
+    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 80);
+    this.camera.position.set(0, 0, 7.6);
     this.camera.lookAt(0, 0, 0);
 
-    // 3. WebGPU Renderer initialization with transparent background
-    this.renderer = new WebGPURenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: 'high-performance'
-    });
-
-    this.renderer.setSize(width, height);
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    this.renderer.setPixelRatio(dpr);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.08;
-
-    this.container.appendChild(this.renderer.domElement);
-
+    // 3. Renderer with robust WebGPU -> WebGL fallback
     try {
-      await this.renderer.init();
+      const gpuRenderer = new WebGPURenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance'
+      });
+      await gpuRenderer.init();
+      this.renderer = gpuRenderer;
       if (this.callbacks.onBackendReady) {
         this.callbacks.onBackendReady('WebGPU (Next-Gen Graphics)');
       }
     } catch {
+      // Fallback to WebGLRenderer for 100% universal browser compatibility
+      const glRenderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance'
+      });
+      this.renderer = glRenderer;
       if (this.callbacks.onBackendReady) {
         this.callbacks.onBackendReady('WebGL 2.0 (High Performance)');
       }
     }
 
+    this.renderer.setSize(width, height);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    this.renderer.setPixelRatio(dpr);
+    this.renderer.setClearColor(0x000000, 0);
+
+    // Enable shadows
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Mount to DOM
+    this.container.appendChild(this.renderer.domElement);
+
     // 4. Load authentic Patrick Heng crumpled paper normal map
     const texLoader = new THREE.TextureLoader();
-    this.paperNormalTexture = texLoader.load('/textures/paper-normals.jpg');
-    this.paperNormalTexture.wrapS = THREE.RepeatWrapping;
-    this.paperNormalTexture.wrapT = THREE.RepeatWrapping;
+    this.paperNormalTexture = texLoader.load('/textures/paper-normals.jpg', (tex) => {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      this.cards.forEach((c) => {
+        c.material.normalMap = tex;
+        c.material.needsUpdate = true;
+      });
+      this.wakeUp();
+    });
     this.textures.push(this.paperNormalTexture);
 
     // 5. Studio Museum Lighting
@@ -122,7 +139,7 @@ export class WebGPUEngine {
     // 6. Shadow-Receiving Paper Backdrop
     this.buildBackdrop();
 
-    // 7. Build Floating Project Cards with Liquid Wave Shaders
+    // 7. Build Floating Project Cards
     this.buildCards();
 
     // 8. Event listeners & Render Loop
@@ -132,7 +149,7 @@ export class WebGPUEngine {
 
   private setupLighting(): void {
     // Ambient light with soft warm tint
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe8e2dc, 1.25);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe8e2dc, 1.2);
     this.scene.add(hemiLight);
 
     // Key directional light creating soft, tactile card drop shadows
@@ -153,18 +170,18 @@ export class WebGPUEngine {
     this.scene.add(sunLight);
 
     // Soft fill light from the lower-right
-    const fillLight = new THREE.DirectionalLight(0xf5ebe0, 0.6);
+    const fillLight = new THREE.DirectionalLight(0xf5ebe0, 0.55);
     fillLight.position.set(7, -3, 6);
     this.scene.add(fillLight);
   }
 
   private buildBackdrop(): void {
-    // Large seamless transparent shadow catcher behind cards to let fluid dynamics flow visibly
+    // Large seamless transparent shadow catcher behind cards
     const wallGeo = new THREE.PlaneGeometry(38, 26);
     this.geometries.push(wallGeo);
 
     const wallMat = new THREE.ShadowMaterial({
-      opacity: 0.12
+      opacity: 0.14
     });
     this.materials.push(wallMat);
 
@@ -181,14 +198,14 @@ export class WebGPUEngine {
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, 256, 340);
 
-    ctx.shadowColor = 'rgba(28, 20, 15, 0.38)';
+    ctx.shadowColor = 'rgba(28, 20, 15, 0.35)';
     ctx.shadowBlur = 28;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 12;
+    ctx.shadowOffsetY = 14;
 
     ctx.fillStyle = '#000000';
     ctx.beginPath();
-    ctx.roundRect(24, 24, 208, 292, 14);
+    ctx.roundRect(24, 24, 208, 292, 16);
     ctx.fill();
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -197,8 +214,8 @@ export class WebGPUEngine {
   }
 
   private buildCards(): void {
-    const cardW = 3.12;
-    const cardH = 4.22;
+    const cardW = 3.05;
+    const cardH = 4.15;
 
     // Shared soft paper shadow texture
     const shadowTex = this.generatePaperShadowTexture();
@@ -209,25 +226,36 @@ export class WebGPUEngine {
       // 1. Front Poster Artwork Texture
       const posterTex = this.generateProjectPosterTexture(project, index);
 
-      // 2. Patrick Heng GLSL Crumpled Paper & Fluid Wave Shader Material
-      const liquidMat = createLiquidWaveMaterial(posterTex, this.paperNormalTexture, index);
-      this.materials.push(liquidMat);
+      // 2. High-performance PBR Material with Patrick Heng Paper Normals
+      const paperMat = new THREE.MeshStandardMaterial({
+        map: posterTex,
+        normalMap: this.paperNormalTexture,
+        normalScale: new THREE.Vector2(0.85, 0.85),
+        roughness: 0.82,
+        metalness: 0.02,
+        side: THREE.DoubleSide
+      });
+      this.materials.push(paperMat);
 
-      // 3. Subdivided paper mesh (64x64 vertices) for organic paper waviness & parabolic curvature
-      const frontPlaneGeo = new THREE.PlaneGeometry(cardW, cardH, 64, 64);
+      // 3. Subdivided paper plane (32x32 grid) for dynamic cloth curvature and wave ripples
+      const frontPlaneGeo = new THREE.PlaneGeometry(cardW, cardH, 32, 32);
       this.geometries.push(frontPlaneGeo);
-      const frontMesh = new THREE.Mesh(frontPlaneGeo, liquidMat);
+      const originalPositions = new Float32Array(frontPlaneGeo.attributes.position.array);
+
+      const frontMesh = new THREE.Mesh(frontPlaneGeo, paperMat);
       frontMesh.position.set(0, 0, 0.02);
+      frontMesh.castShadow = true;
+      frontMesh.receiveShadow = true;
       frontMesh.userData = { project, index };
       cardGroup.add(frontMesh);
 
-      // 4. Tactile floating paper drop shadow plane directly behind the sheet
+      // 4. Soft floating paper drop shadow plane directly behind the sheet
       const shadowGeo = new THREE.PlaneGeometry(cardW * 1.1, cardH * 1.08);
       this.geometries.push(shadowGeo);
       const shadowMat = new THREE.MeshBasicMaterial({
         map: shadowTex,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.24,
         depthWrite: false
       });
       this.materials.push(shadowMat);
@@ -243,8 +271,11 @@ export class WebGPUEngine {
         index,
         mesh: frontMesh,
         group: cardGroup,
-        liquidMaterial: liquidMat,
-        hoverProgress: { value: 0 }
+        geometry: frontPlaneGeo,
+        originalPositions,
+        material: paperMat,
+        hoverProgress: { value: 0 },
+        localHit: new THREE.Vector2(0, 0)
       });
     });
   }
@@ -261,11 +292,11 @@ export class WebGPUEngine {
 
     // 1. Curated Project Base Tone
     const bgGradients: Record<string, [string, string]> = {
-      'hydro-core': ['#071224', '#020610'],
-      artibition: ['#231d17', '#120f0c'],
+      'hydro-core': ['#091426', '#030712'],
+      artibition: ['#28221b', '#17130f'],
       huuk: ['#f8f5f0', '#ece4d8'],
-      pugu: ['#171224', '#0c0814'],
-      'teenueng-studio': ['#1e1814', '#0f0c0a']
+      pugu: ['#1e2530', '#10141a'],
+      'teenueng-studio': ['#231c19', '#140f0d']
     };
 
     const isLightCard = project.id === 'huuk';
@@ -556,7 +587,7 @@ export class WebGPUEngine {
       }
     }
 
-    // Raycast to detect card hover and exact UV coordinates for liquid ripples
+    // Raycast to detect card hover
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const intersects = this.raycaster.intersectObjects(
       this.cards.map((c) => c.mesh),
@@ -571,18 +602,14 @@ export class WebGPUEngine {
       }
       if (obj && obj.userData?.index !== undefined) {
         newHovered = obj.userData.index as number;
-
-        // Set liquid ripple epicenter to exact mouse intersection point!
-        if (intersects[0].uv) {
-          const uv = intersects[0].uv;
+        if (intersects[0].point) {
           const card = this.cards[newHovered];
-          card.liquidMaterial.uniforms.uHit.value.set(uv.x - 0.5, uv.y - 0.5);
+          card.localHit.set(intersects[0].point.x - card.group.position.x, intersects[0].point.y - card.group.position.y);
         }
       }
     }
 
     if (newHovered !== this.hoveredIndex) {
-      // Trigger GSAP wave easing for hover transitions
       if (newHovered !== null) {
         const targetCard = this.cards[newHovered];
         gsap.to(targetCard.hoverProgress, {
@@ -634,14 +661,7 @@ export class WebGPUEngine {
         const clickedIndex = obj.userData.index as number;
 
         if (clickedIndex === this.activeIndex) {
-          // Clicked active center card -> Trigger fluid ripple surge and open case study modal!
-          const activeCard = this.cards[clickedIndex];
-          gsap.fromTo(
-            activeCard.liquidMaterial.uniforms.uRGBShift,
-            { value: 1.8 },
-            { value: 0.0, duration: 0.75, ease: 'power2.out' }
-          );
-
+          // Clicked active center card -> Open case study modal!
           if (this.callbacks.onSelectProject) {
             this.callbacks.onSelectProject(PROJECTS[clickedIndex]);
           }
@@ -755,7 +775,7 @@ export class WebGPUEngine {
     const tiltZ = -this.scrollVelocity * 0.045;
     const tiltY = -this.scrollVelocity * 0.065;
 
-    // 4. Update each floating card position, scale, tilt & GLSL Liquid Wave Uniforms
+    // 4. Update each floating card position, scale, tilt & 3D cloth paper physics
     this.cards.forEach((item) => {
       const card = item.group;
       const offset = item.index - this.scrollCurrent;
@@ -785,12 +805,36 @@ export class WebGPUEngine {
 
       card.scale.setScalar(THREE.MathUtils.lerp(card.scale.x, targetScale, 0.12));
 
-      // 5. Feed real-time uniforms to Patrick Heng GLSL Liquid Wave Shader
-      const mat = item.liquidMaterial;
-      mat.uniforms.uTime.value = time;
-      mat.uniforms.uVelocity.value = this.scrollVelocity;
-      mat.uniforms.uVelocityAbs.value = Math.abs(this.scrollVelocity);
-      mat.uniforms.uHover.value = item.hoverProgress.value;
+      // 5. Tactile 3D cloth paper wave deformation on geometry vertices
+      const posAttr = item.geometry.attributes.position;
+      const orig = item.originalPositions;
+      const vel = this.scrollVelocity;
+      const hover = item.hoverProgress.value;
+
+      // Parabolic arch across screen
+      const ndcX = card.position.x / 4.5;
+      const clampedX = Math.max(-1.0, Math.min(1.0, ndcX));
+      const normX = (clampedX + 1.0) * 0.5;
+      const parabola = 4.0 * normX * (1.0 - normX);
+      const archZ = parabola * 0.32;
+
+      for (let v = 0; v < posAttr.count; v++) {
+        const ox = orig[v * 3];
+        const oy = orig[v * 3 + 1];
+
+        // Organic cloth wave along scroll direction
+        const dragWave = Math.sin(oy * 1.8 + time * 2.8) * vel * 0.3;
+
+        // Subtle tactile paper curl
+        const paperCurl = -Math.sin(oy * 8.0 + item.index) * 0.012;
+
+        // Cursor depression press
+        const hDist = Math.hypot(ox - item.localHit.x, oy - item.localHit.y);
+        const hoverPress = Math.max(0, 1.0 - hDist / 1.5) * hover * -0.055;
+
+        posAttr.setZ(v, archZ + dragWave + paperCurl + hoverPress);
+      }
+      posAttr.needsUpdate = true;
     });
   }
 
