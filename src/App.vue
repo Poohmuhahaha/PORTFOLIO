@@ -3,9 +3,10 @@
     <!-- Subtle Film Noise Texture Overlay (Justine Soulié Aesthetic) -->
     <div class="noise-overlay" aria-hidden="true"></div>
 
-    <!-- 3D Canvas Layer (Patrick Heng Style 3D Spring Card Carousel + Fluid Dynamics) -->
+    <!-- 3D Canvas Layer (Patrick Heng Style 3D Spring Card Carousel) -->
     <WebGPUCanvas
       ref="webgpuCanvasRef"
+      :projects="projects"
       @select-project="onSelectProject"
       @active-index-change="onActiveIndexChange"
     />
@@ -35,6 +36,7 @@
     <!-- Fullscreen Case Study Detail Modal (Horizontal Scroll) -->
     <ProjectModal
       :project="selectedProject"
+      :projects="projects"
       @close="selectedProject = null"
       @select-project="onSelectProject"
       @open-about="showAboutModal = true"
@@ -46,26 +48,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import WebGPUCanvas from './components/WebGPUCanvas.vue';
 import Navigation from './components/Navigation.vue';
 import ProjectModal from './components/ProjectModal.vue';
 import AboutModal from './components/AboutModal.vue';
-import { PROJECTS, type ProjectItem } from './data/projects';
+import { PROJECTS as STATIC_PROJECTS, type ProjectItem } from './data/projects';
+import { fetchProjects } from './services/prismic';
 
 const webgpuCanvasRef = ref<InstanceType<typeof WebGPUCanvas> | null>(null);
 
+const projects = ref<ProjectItem[]>(STATIC_PROJECTS);
 const activeIndex = ref<number>(0);
 const selectedProject = ref<ProjectItem | null>(null);
 const showAboutModal = ref<boolean>(false);
 
+onMounted(async () => {
+  const liveProjects = await fetchProjects();
+  if (liveProjects && liveProjects.length > 0) {
+    projects.value = liveProjects;
+  }
+});
+
 const currentProject = computed<ProjectItem>(() => {
-  return PROJECTS[activeIndex.value] || PROJECTS[0];
+  return projects.value[activeIndex.value] || projects.value[0] || STATIC_PROJECTS[0];
 });
 
 const onSelectProject = (project: ProjectItem) => {
   selectedProject.value = project;
-  const idx = PROJECTS.findIndex((p) => p.id === project.id);
+  const idx = projects.value.findIndex((p) => p.id === project.id);
   if (idx !== -1) {
     activeIndex.value = idx;
     if (webgpuCanvasRef.value) {

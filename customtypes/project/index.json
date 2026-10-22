@@ -1,0 +1,161 @@
+{
+  "id": "project",
+  "label": "Project",
+  "repeatable": true,
+  "status": true,
+  "json": {
+    "Main": {
+      "uid": {
+        "type": "UID",
+        "config": {
+          "label": "Slug ID (e.g. hydro-core)",
+          "placeholder": "hydro-core"
+        }
+      },
+      "title": {
+        "type": "Text",
+        "config": {
+          "label": "Title",
+          "placeholder": "hydro core"
+        }
+      },
+      "short_title": {
+        "type": "Text",
+        "config": {
+          "label": "Short Title (e.g. HYDRO CORE)",
+          "placeholder": "HYDRO CORE"
+        }
+      },
+      "subtitle": {
+        "type": "Text",
+        "config": {
+          "label": "Subtitle",
+          "placeholder": "eulerian navier-stokes fluid dynamics lab"
+        }
+      },
+      "category": {
+        "type": "Text",
+        "config": {
+          "label": "Category",
+          "placeholder": "Fluid Dynamics & GPU Physics"
+        }
+      },
+      "year": {
+        "type": "Text",
+        "config": {
+          "label": "Year",
+          "placeholder": "2025–2026"
+        }
+      },
+      "color": {
+        "type": "Color",
+        "config": {
+          "label": "Background Palette Theme Color"
+        }
+      },
+      "accent_color": {
+        "type": "Color",
+        "config": {
+          "label": "Accent Color"
+        }
+      },
+      "stats": {
+        "type": "Text",
+        "config": {
+          "label": "Stats Badge",
+          "placeholder": "Eulerian Grid • 60 FPS Real-time Fluid Dynamics"
+        }
+      },
+      "description": {
+        "type": "StructuredText",
+        "config": {
+          "label": "Description",
+          "placeholder": "Detailed description of the project...",
+          "multi": "paragraph,strong,em,hyperlink"
+        }
+      },
+      "role": {
+        "type": "Text",
+        "config": {
+          "label": "Role",
+          "placeholder": "Lead Physics & Creative Developer"
+        }
+      },
+      "studio": {
+        "type": "Text",
+        "config": {
+          "label": "Studio / Platform",
+          "placeholder": "Fluid Dynamics & Physics Lab"
+        }
+      },
+      "poster_image": {
+        "type": "Image",
+        "config": {
+          "label": "3D Book Front Cover (Poster Artwork)",
+          "thumbnails": []
+        }
+      },
+      "inner_image": {
+        "type": "Image",
+        "config": {
+          "label": "3D Book Inner Leaf (Parchment Schematic)",
+          "thumbnails": []
+        }
+      },
+      "github_url": {
+        "type": "Link",
+        "config": {
+          "label": "GitHub Repository URL",
+          "placeholder": "https://github.com/..."
+        }
+      },
+      "live_url": {
+        "type": "Link",
+        "config": {
+          "label": "Live Platform URL",
+          "placeholder": "https://..."
+        }
+      },
+      "highlights": {
+        "type": "Group",
+        "config": {
+          "label": "Technical Highlights (Bullet Points)",
+          "fields": {
+            "highlight_text": {
+              "type": "Text",
+              "config": {
+                "label": "Highlight Text"
+              }
+            }
+          }
+        }
+      },
+      "credits": {
+        "type": "Group",
+        "config": {
+          "label": "Credits List",
+          "fields": {
+            "credit_type": {
+              "type": "Text",
+              "config": {
+                "label": "Type (e.g. Role, Solver, Engine)"
+              }
+            },
+            "credit_name": {
+              "type": "Text",
+              "config": {
+                "label": "Name (e.g. Phuwadon Thontra)"
+              }
+            },
+            "credit_url": {
+              "type": "Link",
+              "config": {
+                "label": "URL (Optional)"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

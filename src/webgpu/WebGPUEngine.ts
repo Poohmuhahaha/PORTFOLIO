@@ -68,9 +68,12 @@ export class WebGPUEngine {
   private materials: THREE.Material[] = [];
   private textures: THREE.Texture[] = [];
 
-  constructor(container: HTMLElement, callbacks: EngineCallbacks = {}) {
+  private projects: ProjectItem[];
+
+  constructor(container: HTMLElement, callbacks: EngineCallbacks = {}, projects: ProjectItem[] = PROJECTS) {
     this.container = container;
     this.callbacks = callbacks;
+    this.projects = projects && projects.length > 0 ? projects : PROJECTS;
   }
 
   public async init(): Promise<void> {
@@ -209,7 +212,7 @@ export class WebGPUEngine {
     });
     this.materials.push(pageEdgeMat);
 
-    PROJECTS.forEach((project, index) => {
+    this.projects.forEach((project, index) => {
       const bookGroup = new THREE.Group();
 
       // 1. Textures for this project
@@ -504,7 +507,7 @@ export class WebGPUEngine {
 
         if (clickedIndex === this.activeIndex) {
           if (this.callbacks.onSelectProject) {
-            this.callbacks.onSelectProject(PROJECTS[clickedIndex]);
+            this.callbacks.onSelectProject(this.projects[clickedIndex]);
           }
         } else {
           this.selectProject(clickedIndex);
@@ -514,7 +517,7 @@ export class WebGPUEngine {
   }
 
   public selectProject(index: number): void {
-    const N = PROJECTS.length;
+    const N = this.projects.length;
     const currentNormalized = ((Math.round(this.scrollCurrent) % N) + N) % N;
 
     // Shortest modular path
@@ -580,7 +583,7 @@ export class WebGPUEngine {
   }
 
   private updatePhysics(): void {
-    const N = PROJECTS.length;
+    const N = this.projects.length;
 
     // 1. Mouse coordinates lerping
     this.mouse.x += (this.targetMouse.x - this.mouse.x) * 0.08;

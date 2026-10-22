@@ -17,6 +17,10 @@ import { DragGesture } from '@use-gesture/vanilla';
 import { WebGPUEngine } from '../webgpu/WebGPUEngine';
 import type { ProjectItem } from '../data/projects';
 
+const props = defineProps<{
+  projects?: ProjectItem[];
+}>();
+
 const emit = defineEmits<{
   (e: 'select-project', project: ProjectItem): void;
   (e: 'active-index-change', index: number): void;
@@ -31,11 +35,15 @@ let lastWheelTime = 0;
 
 onMounted(async () => {
   if (containerRef.value) {
-    engine = new WebGPUEngine(containerRef.value, {
-      onSelectProject: (project) => emit('select-project', project),
-      onActiveIndexChange: (index) => emit('active-index-change', index),
-      onHoverBookChange: (index) => emit('hover-book-change', index)
-    });
+    engine = new WebGPUEngine(
+      containerRef.value,
+      {
+        onSelectProject: (project) => emit('select-project', project),
+        onActiveIndexChange: (index) => emit('active-index-change', index),
+        onHoverBookChange: (index) => emit('hover-book-change', index)
+      },
+      props.projects
+    );
 
     await engine.init();
 

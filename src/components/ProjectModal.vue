@@ -165,6 +165,7 @@ import { FluidSimulation } from '../webgpu/FluidSimulation';
 
 const props = defineProps<{
   project: ProjectItem | null;
+  projects?: ProjectItem[];
 }>();
 
 const emit = defineEmits<{
@@ -177,14 +178,17 @@ const trackRef = ref<HTMLElement | null>(null);
 const modalFluidCanvas = ref<HTMLCanvasElement | null>(null);
 let modalFluidSim: FluidSimulation | null = null;
 
+const allProjects = computed(() => (props.projects && props.projects.length > 0 ? props.projects : PROJECTS));
+
 const currentIndex = computed(() => {
   if (!props.project) return 0;
-  return PROJECTS.findIndex((p) => p.id === props.project!.id);
+  return allProjects.value.findIndex((p) => p.id === props.project!.id);
 });
 
 const nextProject = computed(() => {
-  const nextIdx = (currentIndex.value + 1) % PROJECTS.length;
-  return PROJECTS[nextIdx];
+  const list = allProjects.value;
+  const nextIdx = (currentIndex.value + 1) % list.length;
+  return list[nextIdx] || list[0];
 });
 
 watch(
