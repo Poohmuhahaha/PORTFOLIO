@@ -23,9 +23,9 @@ interface CardItem {
 
 /**
  * Patrick Heng & Justine Soulié inspired WebGL/WebGPU Spring Card Engine
- * - Custom GLSL Liquid Wave & Mouse Ripple Distortion Shader
+ * - Custom GLSL Crumpled Paper & Fluid Wave Distortion Shader (authentic paper-normals.jpg)
  * - GSAP-driven fluid dampening, inertia & chromatic aberration (RGB Shift)
- * - Dynamic 3D Floating Project Posters with Tactile Drop Shadows
+ * - Floating paper cloth posters with realistic drop shadows
  * - Direct Drag & Flick Momentum with Spring Physics
  */
 export class WebGPUEngine {
@@ -34,6 +34,9 @@ export class WebGPUEngine {
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private cards: CardItem[] = [];
+
+  // Textures & Paper Normal Map
+  private paperNormalTexture: THREE.Texture | null = null;
 
   // Interaction & Physics
   private callbacks: EngineCallbacks;
@@ -48,7 +51,7 @@ export class WebGPUEngine {
   public scrollTarget = 0;
   public scrollVelocity = 0;
   public isDragging = false;
-  private readonly cardSpacing = 3.85;
+  private readonly cardSpacing = 3.82;
 
   // Animation & Idle Loop
   private rafId: number | null = null;
@@ -106,27 +109,34 @@ export class WebGPUEngine {
       }
     }
 
-    // 4. Studio Museum Lighting
+    // 4. Load authentic Patrick Heng crumpled paper normal map
+    const texLoader = new THREE.TextureLoader();
+    this.paperNormalTexture = texLoader.load('/textures/paper-normals.jpg');
+    this.paperNormalTexture.wrapS = THREE.RepeatWrapping;
+    this.paperNormalTexture.wrapT = THREE.RepeatWrapping;
+    this.textures.push(this.paperNormalTexture);
+
+    // 5. Studio Museum Lighting
     this.setupLighting();
 
-    // 5. Shadow-Receiving Paper Backdrop
+    // 6. Shadow-Receiving Paper Backdrop
     this.buildBackdrop();
 
-    // 6. Build Floating Project Cards with Liquid Wave Shaders
+    // 7. Build Floating Project Cards with Liquid Wave Shaders
     this.buildCards();
 
-    // 7. Event listeners & Render Loop
+    // 8. Event listeners & Render Loop
     this.setupEvents();
     this.startLoop();
   }
 
   private setupLighting(): void {
     // Ambient light with soft warm tint
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe8e2dc, 1.15);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe8e2dc, 1.25);
     this.scene.add(hemiLight);
 
     // Key directional light creating soft, tactile card drop shadows
-    const sunLight = new THREE.DirectionalLight(0xfff9f2, 1.8);
+    const sunLight = new THREE.DirectionalLight(0xfff9f2, 1.6);
     sunLight.position.set(-6, 9, 8);
     sunLight.target.position.set(0, 0, 0);
     this.scene.add(sunLight.target);
@@ -143,7 +153,7 @@ export class WebGPUEngine {
     this.scene.add(sunLight);
 
     // Soft fill light from the lower-right
-    const fillLight = new THREE.DirectionalLight(0xf5ebe0, 0.65);
+    const fillLight = new THREE.DirectionalLight(0xf5ebe0, 0.6);
     fillLight.position.set(7, -3, 6);
     this.scene.add(fillLight);
   }
@@ -164,10 +174,34 @@ export class WebGPUEngine {
     this.scene.add(wall);
   }
 
+  private generatePaperShadowTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 340;
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, 256, 340);
+
+    ctx.shadowColor = 'rgba(28, 20, 15, 0.38)';
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 12;
+
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.roundRect(24, 24, 208, 292, 14);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    this.textures.push(tex);
+    return tex;
+  }
+
   private buildCards(): void {
-    const cardW = 3.05;
-    const cardH = 4.15;
-    const cardD = 0.04;
+    const cardW = 3.12;
+    const cardH = 4.22;
+
+    // Shared soft paper shadow texture
+    const shadowTex = this.generatePaperShadowTexture();
 
     PROJECTS.forEach((project, index) => {
       const cardGroup = new THREE.Group();
@@ -175,32 +209,31 @@ export class WebGPUEngine {
       // 1. Front Poster Artwork Texture
       const posterTex = this.generateProjectPosterTexture(project, index);
 
-      // 2. Patrick Heng GLSL Liquid Wave Shader Material
-      const liquidMat = createLiquidWaveMaterial(posterTex);
+      // 2. Patrick Heng GLSL Crumpled Paper & Fluid Wave Shader Material
+      const liquidMat = createLiquidWaveMaterial(posterTex, this.paperNormalTexture, index);
       this.materials.push(liquidMat);
 
-      // Subdivided plane mesh for real-time 3D fluid ripple deformation
-      const frontPlaneGeo = new THREE.PlaneGeometry(cardW, cardH, 48, 48);
+      // 3. Subdivided paper mesh (64x64 vertices) for organic paper waviness & parabolic curvature
+      const frontPlaneGeo = new THREE.PlaneGeometry(cardW, cardH, 64, 64);
       this.geometries.push(frontPlaneGeo);
       const frontMesh = new THREE.Mesh(frontPlaneGeo, liquidMat);
-      frontMesh.position.set(0, 0, 0.01);
+      frontMesh.position.set(0, 0, 0.02);
       frontMesh.userData = { project, index };
       cardGroup.add(frontMesh);
 
-      // 3. Tactile Backing Plate & Shadow Caster
-      const backGeo = new THREE.BoxGeometry(cardW, cardH, cardD);
-      this.geometries.push(backGeo);
-      const backMat = new THREE.MeshStandardMaterial({
-        color: 0xded8d0,
-        roughness: 0.85,
-        metalness: 0.02
+      // 4. Tactile floating paper drop shadow plane directly behind the sheet
+      const shadowGeo = new THREE.PlaneGeometry(cardW * 1.1, cardH * 1.08);
+      this.geometries.push(shadowGeo);
+      const shadowMat = new THREE.MeshBasicMaterial({
+        map: shadowTex,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false
       });
-      this.materials.push(backMat);
-      const backMesh = new THREE.Mesh(backGeo, backMat);
-      backMesh.position.set(0, 0, -cardD / 2);
-      backMesh.castShadow = true;
-      backMesh.receiveShadow = true;
-      cardGroup.add(backMesh);
+      this.materials.push(shadowMat);
+      const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+      shadowMesh.position.set(0, -0.05, -0.02);
+      cardGroup.add(shadowMesh);
 
       cardGroup.position.set(index * this.cardSpacing, 0, 0);
 
@@ -228,11 +261,11 @@ export class WebGPUEngine {
 
     // 1. Curated Project Base Tone
     const bgGradients: Record<string, [string, string]> = {
-      'hydro-core': ['#091426', '#030712'],
-      artibition: ['#28221b', '#17130f'],
+      'hydro-core': ['#071224', '#020610'],
+      artibition: ['#231d17', '#120f0c'],
       huuk: ['#f8f5f0', '#ece4d8'],
-      pugu: ['#1e2530', '#10141a'],
-      'teenueng-studio': ['#231c19', '#140f0d']
+      pugu: ['#171224', '#0c0814'],
+      'teenueng-studio': ['#1e1814', '#0f0c0a']
     };
 
     const isLightCard = project.id === 'huuk';
@@ -244,55 +277,45 @@ export class WebGPUEngine {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 1400);
 
-    // 2. Tactile Frame Border
+    // 2. Subtle Tactile Frame Border
     ctx.strokeStyle = isLightCard ? 'rgba(40, 30, 20, 0.12)' : 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(40, 40, 944, 1320);
+    ctx.lineWidth = 3;
+    ctx.strokeRect(48, 48, 928, 1304);
 
-    // 3. Top Header Bar: Roman Numeral & Year
-    const textColor = isLightCard ? '#252422' : '#f5ebe0';
-    const subColor = isLightCard ? '#8c8080' : 'rgba(245, 235, 224, 0.65)';
+    // 3. Elegant Minimalist Header: Index & Year
+    const subColor = isLightCard ? 'rgba(40, 30, 20, 0.55)' : 'rgba(245, 235, 224, 0.6)';
     const accentColor = project.accentColor || '#e56b55';
 
     ctx.fillStyle = subColor;
-    ctx.font = '500 24px Inter, sans-serif';
-    ctx.letterSpacing = '0.12em';
-    ctx.fillText(`NO. 0${index + 1}`, 72, 95);
+    ctx.font = '500 22px Inter, sans-serif';
+    ctx.letterSpacing = '0.14em';
+    ctx.fillText(`NO. 0${index + 1}`, 72, 98);
     ctx.textAlign = 'right';
-    ctx.fillText(project.year.toUpperCase(), 952, 95);
+    ctx.fillText(project.year.toUpperCase(), 952, 98);
     ctx.textAlign = 'left';
 
-    // Thin header divider line
+    // Thin subtle header rule
     ctx.strokeStyle = isLightCard ? 'rgba(40, 30, 20, 0.08)' : 'rgba(255, 255, 255, 0.08)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(72, 120);
-    ctx.lineTo(952, 120);
+    ctx.moveTo(72, 122);
+    ctx.lineTo(952, 122);
     ctx.stroke();
 
-    // 4. Unique Abstract Creative Artwork per Project
+    // 4. Bespoke Graphic Artwork per Project
     ctx.save();
     this.renderPosterArt(ctx, project.id, accentColor, isLightCard);
     ctx.restore();
 
-    // 5. Project Category & Tag Pill
-    ctx.fillStyle = accentColor;
-    ctx.fillRect(72, 1140, 14, 14);
-
+    // 5. Subtle Bottom Monogram / Category watermark
     ctx.fillStyle = subColor;
-    ctx.font = '600 22px Inter, sans-serif';
-    ctx.fillText(project.category.toUpperCase(), 102, 1152);
+    ctx.font = '500 18px Inter, sans-serif';
+    ctx.letterSpacing = '0.12em';
+    ctx.fillText(project.category.toUpperCase(), 72, 1310);
 
-    // 6. Bold Project Title
-    ctx.fillStyle = textColor;
-    ctx.font = '700 68px Inter, sans-serif';
-    ctx.fillText(project.title.toUpperCase(), 72, 1235);
-
-    // 7. Subtitle / One-line craft narrative
-    ctx.fillStyle = subColor;
-    ctx.font = '400 26px Inter, sans-serif';
-    const subText = project.subtitle.length > 42 ? project.subtitle.slice(0, 40) + '...' : project.subtitle;
-    ctx.fillText(subText, 72, 1285);
+    ctx.textAlign = 'right';
+    ctx.fillText('PT ARCHIVE', 952, 1310);
+    ctx.textAlign = 'left';
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -305,7 +328,7 @@ export class WebGPUEngine {
    */
   private renderPosterArt(ctx: CanvasRenderingContext2D, id: string, accent: string, _isLight: boolean): void {
     const cx = 512;
-    const cy = 620;
+    const cy = 680;
 
     switch (id) {
       case 'hydro-core': {
@@ -314,39 +337,39 @@ export class WebGPUEngine {
         ctx.lineWidth = 4;
 
         // Dynamic vortex spirals
-        for (let s = 0; s < 5; s++) {
+        for (let s = 0; s < 6; s++) {
           ctx.beginPath();
-          const startAngle = (s * Math.PI * 2) / 5;
-          for (let a = 0; a < Math.PI * 4; a += 0.1) {
-            const r = 20 + a * 22;
+          const startAngle = (s * Math.PI * 2) / 6;
+          for (let a = 0; a < Math.PI * 4; a += 0.08) {
+            const r = 24 + a * 26;
             const px = cx + Math.cos(startAngle + a) * r;
-            const py = cy + Math.sin(startAngle + a) * (r * 0.75);
+            const py = cy + Math.sin(startAngle + a) * (r * 0.78);
             if (a === 0) ctx.moveTo(px, py);
             else ctx.lineTo(px, py);
           }
-          ctx.strokeStyle = s % 2 === 0 ? accent : '#6366f1';
-          ctx.lineWidth = 3;
+          ctx.strokeStyle = s % 2 === 0 ? accent : '#818cf8';
+          ctx.lineWidth = 2.5;
           ctx.stroke();
         }
 
         // Luminous fluid core glow
-        const fGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 180);
+        const fGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 220);
         fGrad.addColorStop(0, '#ffffff');
-        fGrad.addColorStop(0.3, '#38bdf8');
-        fGrad.addColorStop(0.7, '#6366f1');
-        fGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+        fGrad.addColorStop(0.25, '#38bdf8');
+        fGrad.addColorStop(0.65, '#6366f1');
+        fGrad.addColorStop(1, 'rgba(7, 18, 36, 0)');
         ctx.fillStyle = fGrad;
         ctx.beginPath();
-        ctx.arc(cx, cy, 180, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 220, 0, Math.PI * 2);
         ctx.fill();
 
         // Curl noise particle dots
-        for (let p = 0; p < 24; p++) {
-          const ang = p * 0.28;
-          const dist = 60 + p * 8;
+        for (let p = 0; p < 36; p++) {
+          const ang = p * 0.24;
+          const dist = 50 + p * 8.5;
           const dotX = cx + Math.cos(ang) * dist;
           const dotY = cy + Math.sin(ang) * (dist * 0.8);
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = p % 3 === 0 ? '#ffffff' : '#38bdf8';
           ctx.beginPath();
           ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
           ctx.fill();
@@ -357,31 +380,31 @@ export class WebGPUEngine {
       case 'artibition': {
         // Classical Roman Arch with Perspective Wireframe & Gilded Orb
         ctx.strokeStyle = accent;
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 5;
         ctx.beginPath();
-        ctx.arc(cx, cy - 80, 220, Math.PI, 0, false);
-        ctx.lineTo(cx + 220, cy + 280);
-        ctx.lineTo(cx - 220, cy + 280);
+        ctx.arc(cx, cy - 80, 240, Math.PI, 0, false);
+        ctx.lineTo(cx + 240, cy + 320);
+        ctx.lineTo(cx - 240, cy + 320);
         ctx.closePath();
         ctx.stroke();
 
         // Inner glowing sphere
-        const orbGrad = ctx.createRadialGradient(cx - 40, cy - 120, 10, cx, cy - 80, 160);
+        const orbGrad = ctx.createRadialGradient(cx - 50, cy - 130, 10, cx, cy - 80, 180);
         orbGrad.addColorStop(0, '#ffffff');
         orbGrad.addColorStop(0.4, accent);
-        orbGrad.addColorStop(1, 'rgba(23, 19, 15, 0)');
+        orbGrad.addColorStop(1, 'rgba(18, 15, 12, 0)');
         ctx.fillStyle = orbGrad;
         ctx.beginPath();
-        ctx.arc(cx, cy - 80, 150, 0, Math.PI * 2);
+        ctx.arc(cx, cy - 80, 160, 0, Math.PI * 2);
         ctx.fill();
 
         // Architectural horizontal lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
         ctx.lineWidth = 2;
-        for (let y = cy - 20; y < cy + 260; y += 40) {
+        for (let y = cy - 20; y < cy + 300; y += 40) {
           ctx.beginPath();
-          ctx.moveTo(cx - 180, y);
-          ctx.lineTo(cx + 180, y);
+          ctx.moveTo(cx - 200, y);
+          ctx.lineTo(cx + 200, y);
           ctx.stroke();
         }
         break;
@@ -390,13 +413,13 @@ export class WebGPUEngine {
       case 'huuk': {
         // Multi-layered editorial publishing cards
         const cardColors = ['#cd8db0', '#a5896f', '#736c60'];
-        [-50, 0, 50].forEach((ox, i) => {
+        [-60, 0, 60].forEach((ox, i) => {
           ctx.save();
-          ctx.translate(cx + ox, cy + (i - 1) * 35);
+          ctx.translate(cx + ox, cy + (i - 1) * 40);
           ctx.rotate((i - 1) * 0.14);
           ctx.fillStyle = cardColors[i];
           ctx.beginPath();
-          ctx.roundRect(-160, -200, 320, 380, 24);
+          ctx.roundRect(-170, -220, 340, 420, 24);
           ctx.fill();
 
           ctx.strokeStyle = '#ffffff';
@@ -408,89 +431,62 @@ export class WebGPUEngine {
       }
 
       case 'pugu': {
-        // Playful gamified concentric rings and isometric clockwork
+        // Playful concentric soundwave rings and neon harmonics
         ctx.strokeStyle = accent;
-        ctx.lineWidth = 8;
-        for (let r = 80; r <= 280; r += 55) {
+        ctx.lineWidth = 6;
+        for (let r = 70; r <= 310; r += 55) {
           ctx.beginPath();
           ctx.arc(cx, cy, r, 0, Math.PI * 2);
           ctx.stroke();
         }
 
         // Vibrant center companion glyph
-        const pGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 110);
+        const pGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 130);
         pGrad.addColorStop(0, '#ffffff');
         pGrad.addColorStop(0.5, '#4f5b6b');
         pGrad.addColorStop(1, '#cd8db0');
         ctx.fillStyle = pGrad;
         ctx.beginPath();
-        ctx.arc(cx, cy, 95, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 110, 0, Math.PI * 2);
         ctx.fill();
         break;
       }
 
-      case 'pos': {
-        // Precision engineering grid & glowing touch nexus
+      case 'teenueng-studio': {
+        // Precision architectural blueprint grid & glowing wireframe
         ctx.strokeStyle = accent;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         const gridStep = 45;
-        for (let x = cx - 220; x <= cx + 220; x += gridStep) {
+        for (let x = cx - 240; x <= cx + 240; x += gridStep) {
           ctx.beginPath();
-          ctx.moveTo(x, cy - 220);
-          ctx.lineTo(x, cy + 220);
+          ctx.moveTo(x, cy - 240);
+          ctx.lineTo(x, cy + 240);
           ctx.stroke();
         }
-        for (let y = cy - 220; y <= cy + 220; y += gridStep) {
+        for (let y = cy - 240; y <= cy + 240; y += gridStep) {
           ctx.beginPath();
-          ctx.moveTo(cx - 220, y);
-          ctx.lineTo(cx + 220, y);
+          ctx.moveTo(cx - 240, y);
+          ctx.lineTo(cx + 240, y);
           ctx.stroke();
         }
 
-        // Diamond reticle
-        ctx.strokeStyle = '#6ce08b';
-        ctx.lineWidth = 6;
+        // Diamond reticle & Roman entablature elevation
+        ctx.strokeStyle = '#f5ebe0';
+        ctx.lineWidth = 3.5;
         ctx.beginPath();
-        ctx.moveTo(cx, cy - 130);
-        ctx.lineTo(cx + 130, cy);
-        ctx.lineTo(cx, cy + 130);
-        ctx.lineTo(cx - 130, cy);
+        ctx.moveTo(cx, cy - 200);
+        ctx.lineTo(cx + 200, cy);
+        ctx.lineTo(cx, cy + 200);
+        ctx.lineTo(cx - 200, cy);
         ctx.closePath();
         ctx.stroke();
         break;
       }
 
       default: {
-        // Cloud Engine: Cosmic distributed node topology
         ctx.strokeStyle = accent;
         ctx.lineWidth = 4;
-        const nodes: [number, number][] = [
-          [cx, cy - 160],
-          [cx + 180, cy - 60],
-          [cx + 140, cy + 140],
-          [cx - 140, cy + 140],
-          [cx - 180, cy - 60],
-          [cx, cy + 30]
-        ];
-
-        nodes.forEach(([nx, ny]) => {
-          nodes.forEach(([mx, my]) => {
-            ctx.beginPath();
-            ctx.moveTo(nx, ny);
-            ctx.lineTo(mx, my);
-            ctx.stroke();
-          });
-        });
-
-        nodes.forEach(([nx, ny]) => {
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(nx, ny, 16, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = accent;
-          ctx.stroke();
-        });
-        break;
+        ctx.strokeRect(cx - 180, cy - 180, 360, 360);
       }
     }
   }
@@ -530,7 +526,7 @@ export class WebGPUEngine {
   public endDrag(): void {
     this.isDragging = false;
     const targetIdx = Math.max(0, Math.min(PROJECTS.length - 1, Math.round(this.scrollCurrent)));
-    
+
     // GSAP smooth inertia snap
     gsap.to(this, {
       scrollTarget: targetIdx,
@@ -580,7 +576,7 @@ export class WebGPUEngine {
         if (intersects[0].uv) {
           const uv = intersects[0].uv;
           const card = this.cards[newHovered];
-          card.liquidMaterial.uniforms.uMouse.value.set(uv.x, uv.y);
+          card.liquidMaterial.uniforms.uHit.value.set(uv.x - 0.5, uv.y - 0.5);
         }
       }
     }
@@ -768,9 +764,9 @@ export class WebGPUEngine {
       // Target X: centered along track
       const targetX = offset * this.cardSpacing;
 
-      // Parallax depth: active card stays forward at z = 0, sides recede to z = -0.6
+      // Parallax depth: active card stays forward at z = 0, sides recede to z = -0.55
       const isHovered = this.hoveredIndex === item.index;
-      const targetZ = (isHovered ? 0.35 : 0.0) - Math.min(distFromCenter * 0.45, 0.9);
+      const targetZ = (isHovered ? 0.32 : 0.0) - Math.min(distFromCenter * 0.42, 0.85);
 
       // Scale: center card is 1.0, neighbors taper to 0.86
       const targetScale = Math.max(0.86, 1.0 - distFromCenter * 0.12);
@@ -792,9 +788,9 @@ export class WebGPUEngine {
       // 5. Feed real-time uniforms to Patrick Heng GLSL Liquid Wave Shader
       const mat = item.liquidMaterial;
       mat.uniforms.uTime.value = time;
-      mat.uniforms.uVelocity.value.set(this.scrollVelocity, 0);
+      mat.uniforms.uVelocity.value = this.scrollVelocity;
+      mat.uniforms.uVelocityAbs.value = Math.abs(this.scrollVelocity);
       mat.uniforms.uHover.value = item.hoverProgress.value;
-      mat.uniforms.uDrag.value = this.isDragging ? 1.0 : 0.0;
     });
   }
 

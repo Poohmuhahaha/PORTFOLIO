@@ -3,7 +3,7 @@
     <!-- Subtle Film Noise Texture Overlay (Justine Soulié Aesthetic) -->
     <div class="noise-overlay" aria-hidden="true"></div>
 
-    <!-- WebGPU Canvas Layer (Patrick Heng Style 3D Spring Card Carousel) -->
+    <!-- WebGPU Canvas Layer (Patrick Heng Style 3D Spring Card Carousel + Navier-Stokes Fluid) -->
     <WebGPUCanvas
       ref="webgpuCanvasRef"
       @select-project="onSelectProject"
@@ -20,62 +20,20 @@
       @open-about="showAboutModal = true"
     />
 
-    <!-- Signature Justine Soulié Bottom Showcase Bar (.work-names) -->
-    <footer class="work-names interactive">
-      <div class="work-names__content">
-        <!-- Interactive Project Title with Click Action -->
-        <button class="work-names__title-btn" @click="openActiveProject" title="View Project Case Study">
-          <transition name="title-slide" mode="out-in">
-            <h1 :key="currentProject.id" class="work-names__title">
-              {{ currentProject.title }}
-            </h1>
-          </transition>
-        </button>
-
-        <!-- Signature Justine Soulié Thunder / Lightning SVG Stroke -->
-        <div class="work-names__bar">
-          <svg width="311" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2" />
-          </svg>
-        </div>
-
-        <!-- Project Meta / Type / Year -->
-        <div class="work-names__type">
-          <span class="type-category">{{ currentProject.category }}</span>
-          <span class="type-sep">•</span>
-          <span class="type-stats">{{ currentProject.stats }}</span>
-          <span class="type-sep">•</span>
-          <span class="type-year">{{ currentProject.year }}</span>
-        </div>
-
-        <!-- Action & Navigation Controls -->
-        <div class="work-names__controls">
-          <!-- Quick Index Pagination Pills -->
-          <div class="index-pills">
-            <button
-              v-for="(p, idx) in PROJECTS"
-              :key="p.id"
-              class="pill-btn"
-              :class="{ 'is-active': activeIndex === idx }"
-              @click="selectProjectIndex(idx)"
-              :title="p.title"
-            >
-              <span class="pill-num">0{{ idx + 1 }}</span>
-            </button>
+    <!-- Signature Justine Soulié Minimalist Bottom Bar (.work-names) -->
+    <footer class="work-names">
+      <button
+        class="work-names__content"
+        @click="openActiveProject"
+        title="View Project Case Study"
+      >
+        <transition name="meta-fade" mode="out-in">
+          <div :key="currentProject.id" class="work-names__meta">
+            <h1 class="work-names__title">{{ currentProject.title.toLowerCase() }}</h1>
+            <p class="work-names__subtitle">{{ currentProject.subtitle.toLowerCase() }}</p>
           </div>
-
-          <!-- Open Case Study CTA -->
-          <button class="case-cta-btn" @click="openActiveProject">
-            <span>Open Case Study</span>
-            <span class="cta-arrow">↗</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Interactive Fluid & Navigation Guide -->
-      <div class="drag-hint">
-        <span>← INTERACTIVE FLUID DYNAMICS ARCHIVE • DRAG OR MOVE MOUSE TO SWIRL LIQUID →</span>
-      </div>
+        </transition>
+      </button>
     </footer>
 
     <!-- Case Study & About Modals -->
@@ -126,13 +84,6 @@ const onBackendReady = (backend: string) => {
   isWebGPU.value = backend.includes('WebGPU');
 };
 
-const selectProjectIndex = (index: number) => {
-  activeIndex.value = index;
-  if (webgpuCanvasRef.value) {
-    webgpuCanvasRef.value.selectBookFromShelf(index);
-  }
-};
-
 const openActiveProject = () => {
   selectedProject.value = currentProject.value;
 };
@@ -153,7 +104,7 @@ const openActiveProject = () => {
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  opacity: 0.042;
+  opacity: 0.038;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
@@ -164,193 +115,81 @@ const openActiveProject = () => {
   left: 0;
   right: 0;
   z-index: 20;
-  padding: 0 48px 36px;
+  padding: 0 24px 34px;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
   pointer-events: none;
 }
 
 .work-names__content {
+  background: none;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  outline: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   pointer-events: auto;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
-.work-names__title-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  outline: none;
-}
-
-.work-names__title {
-  font-family: var(--font-display);
-  font-size: clamp(34px, 5.2vw, 68px);
-  font-weight: 700;
-  color: #252422;
-  text-transform: uppercase;
-  letter-spacing: -0.02em;
-  line-height: 1.05;
-  margin: 0;
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1), color 0.25s ease;
-}
-
-.work-names__title-btn:hover .work-names__title {
-  color: #e56b55;
+.work-names__content:hover {
   transform: translateY(-2px);
 }
 
-/* Signature Lightning SVG Divider */
-.work-names__bar {
-  margin: 12px 0 10px;
-  color: #252422;
-  opacity: 0.85;
-}
-
-.work-names__bar svg {
-  display: block;
-  width: clamp(200px, 24vw, 311px);
-  height: auto;
-}
-
-.work-names__type {
+.work-names__meta {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  gap: 4px;
+}
+
+.work-names__title {
+  font-family: var(--font-body);
+  font-size: clamp(18px, 1.7vw, 23px);
+  font-weight: 700;
+  color: #252422;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  margin: 0;
+  transition: color 0.2s ease;
+}
+
+.work-names__content:hover .work-names__title {
+  color: #e56b55;
+}
+
+.work-names__subtitle {
+  font-family: var(--font-body);
+  font-size: clamp(12px, 1.1vw, 14px);
+  font-weight: 400;
   color: #8c8080;
-  margin-bottom: 16px;
+  letter-spacing: 0.01em;
+  margin: 0;
 }
 
-.type-sep {
-  opacity: 0.4;
+/* Smooth Fade/Slide for Active Project Transitions */
+.meta-fade-enter-active,
+.meta-fade-leave-active {
+  transition: all 0.22s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
-.work-names__controls {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-/* Index Pagination Pills */
-.index-pills {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.pill-btn {
-  background: none;
-  border: none;
-  padding: 6px 8px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: #8c8080;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s ease;
-}
-
-.pill-btn:hover {
-  color: #252422;
-}
-
-.pill-btn.is-active {
-  color: #252422;
-}
-
-.pill-btn.is-active::after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background: #252422;
-  border-radius: 1px;
-}
-
-/* Open Case Study CTA Button */
-.case-cta-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 18px;
-  border-radius: 20px;
-  background: #252422;
-  border: 1px solid #252422;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.case-cta-btn:hover {
-  background: #e56b55;
-  border-color: #e56b55;
-  transform: translateY(-1px);
-}
-
-.cta-arrow {
-  font-size: 13px;
-  transition: transform 0.2s ease;
-}
-
-.case-cta-btn:hover .cta-arrow {
-  transform: translate(2px, -2px);
-}
-
-/* Subtle Bottom Drag Hint */
-.drag-hint {
-  margin-top: 14px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  color: #b0a8a0;
-  text-transform: uppercase;
-}
-
-/* Title Transition */
-.title-slide-enter-active,
-.title-slide-leave-active {
-  transition: all 0.24s cubic-bezier(0.2, 0.8, 0.3, 1);
-}
-
-.title-slide-enter-from {
+.meta-fade-enter-from {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(6px);
 }
 
-.title-slide-leave-to {
+.meta-fade-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-6px);
 }
 
 @media (max-width: 768px) {
   .work-names {
-    padding: 0 20px 24px;
-  }
-  .work-names__type {
-    font-size: 11px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  .type-stats {
-    display: none;
-  }
-  .drag-hint {
-    display: none;
+    padding: 0 16px 24px;
   }
 }
 </style>

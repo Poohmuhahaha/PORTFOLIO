@@ -1,37 +1,30 @@
 <template>
   <header class="app-header">
     <div class="header-brand">
-      <span class="brand-name">Phuwadon Thontra</span>
-      <span class="brand-role">Fluid Dynamics & Creative Physics Lab</span>
-      <span class="webgpu-pill" :class="{ 'is-active': isWebGPU }" :title="backendName">
-        <span class="pill-dot"></span>
-        <span class="pill-text">{{ isWebGPU ? 'Navier-Stokes GPU' : 'WebGL 2' }}</span>
-      </span>
+      <span class="brand-name">phuwadon thontra</span>
+      <span class="brand-dot" :class="{ 'is-active': isWebGPU }" :title="backendName"></span>
     </div>
 
     <nav class="header-nav">
       <button class="nav-link" @click="$emit('open-about')">
-        <span>ABOUT</span>
+        <span>about</span>
         <div class="nav-svg-c">
-          <svg width="52" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="48" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2.2" />
           </svg>
         </div>
       </button>
 
-      <a href="https://github.com/Poohmuhahaha" target="_blank" rel="noopener noreferrer" class="nav-link">
-        <span>GITHUB ↗</span>
+      <a
+        href="https://github.com/Poohmuhahaha"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="nav-link"
+        title="GitHub Profile"
+      >
+        <span>github</span>
         <div class="nav-svg-c">
-          <svg width="68" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2.2" />
-          </svg>
-        </div>
-      </a>
-
-      <a href="mailto:thontrapoowadol@gmail.com" class="nav-link">
-        <span>CONTACT</span>
-        <div class="nav-svg-c">
-          <svg width="64" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="52" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2.2" />
           </svg>
         </div>
@@ -61,7 +54,7 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 32px 48px;
+  padding: 36px 48px;
   pointer-events: none;
   font-family: var(--font-body);
 }
@@ -69,56 +62,31 @@ defineEmits<{
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   pointer-events: auto;
 }
 
 .brand-name {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   color: #252422;
   letter-spacing: -0.01em;
+  text-transform: lowercase;
 }
 
-.brand-role {
-  font-size: 13px;
-  font-weight: 400;
-  color: #8c8080;
-  letter-spacing: 0.02em;
-}
-
-.webgpu-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  border-radius: 12px;
-  background: rgba(37, 36, 34, 0.05);
-  border: 1px solid rgba(37, 36, 34, 0.08);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #8c8080;
-}
-
-.webgpu-pill.is-active .pill-dot {
+.brand-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: #34c759;
   box-shadow: 0 0 6px rgba(52, 199, 89, 0.6);
-}
-
-.pill-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #ff9500;
-  transition: all 0.3s ease;
+  opacity: 0.85;
 }
 
 .header-nav {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 28px;
   pointer-events: auto;
 }
 
@@ -132,10 +100,10 @@ defineEmits<{
   padding: 4px 0;
   color: #252422;
   font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
   text-decoration: none;
   cursor: pointer;
   transition: color 0.2s ease;
@@ -145,7 +113,7 @@ defineEmits<{
   color: #e56b55;
 }
 
-/* Signature Justine Soulié thunder / stroke SVG underline */
+/* Signature Justine Soulié lightning stroke SVG underline */
 .nav-svg-c {
   position: absolute;
   bottom: -4px;
@@ -153,7 +121,7 @@ defineEmits<{
   pointer-events: none;
   opacity: 0;
   transform: translateY(2px);
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+  transition: all 0.24s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
 .nav-svg-c svg {
@@ -168,15 +136,6 @@ defineEmits<{
 @media (max-width: 768px) {
   .app-header {
     padding: 24px 20px;
-  }
-  .brand-role {
-    display: none;
-  }
-  .header-nav {
-    gap: 18px;
-  }
-  .nav-link {
-    font-size: 11px;
   }
 }
 </style>
