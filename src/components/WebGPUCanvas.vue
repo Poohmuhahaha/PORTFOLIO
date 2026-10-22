@@ -41,15 +41,22 @@ onMounted(async () => {
 
   await engine.init();
 
-  // Attach Touch / Pointer Drag gestures with true pointer coordinates (No snapping to 0,0!)
+  // Attach Touch / Pointer Drag gestures with direct spring momentum
   dragGesture = new DragGesture(
     containerRef.value,
-    ({ xy: [x, y], dragging }) => {
+    ({ delta: [dx], xy: [x, y], dragging, last }) => {
       if (!engine || !containerRef.value) return;
       const rect = containerRef.value.getBoundingClientRect();
       const ndcX = ((x - rect.left) / rect.width) * 2 - 1;
       const ndcY = -((y - rect.top) / rect.height) * 2 + 1;
       engine.updatePointer(ndcX, ndcY, dragging);
+
+      if (dragging && Math.abs(dx) > 0) {
+        engine.applyDragDelta(dx);
+      }
+      if (last) {
+        engine.endDrag();
+      }
     },
     { eventOptions: { passive: false } }
   );
@@ -65,10 +72,13 @@ const handlePointerMove = (e: PointerEvent) => {
 
 const handleWheel = (e: WheelEvent) => {
   const now = performance.now();
-  if (now - lastWheelTime < 280) return; // Debounce wheel gestures
-  if (Math.abs(e.deltaY) > 20 || Math.abs(e.deltaX) > 20) {
+  if (now - lastWheelTime < 240) return;
+  if (Math.abs(e.deltaY) > 15 || Math.abs(e.deltaX) > 15) {
     const dir = e.deltaY > 0 || e.deltaX > 0 ? 1 : -1;
     lastWheelTime = now;
+    if (engine) {
+      engine.applyWheelDelta(dir);
+    }
     emit('wheel-delta', dir);
   }
 };

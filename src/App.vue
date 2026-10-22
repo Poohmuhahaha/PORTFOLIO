@@ -1,87 +1,84 @@
 <template>
   <div class="app-root">
-    <!-- WebGPU Canvas Layer (Interactive 3D Renaissance Library & Bookshelf) -->
+    <!-- Subtle Film Noise Texture Overlay (Justine Soulié Aesthetic) -->
+    <div class="noise-overlay" aria-hidden="true"></div>
+
+    <!-- WebGPU Canvas Layer (Patrick Heng Style 3D Spring Card Carousel) -->
     <WebGPUCanvas
       ref="webgpuCanvasRef"
       @select-project="onSelectProject"
       @active-index-change="onActiveIndexChange"
       @wheel-delta="onWheelDelta"
       @backend-ready="onBackendReady"
-      @book-open-change="onBookOpenChange"
       @hover-book-change="onHoverBookChange"
     />
 
-    <!-- Minimal Museum Header -->
+    <!-- Minimal Header (Navigation) -->
     <Navigation
       :backend-name="backendName"
       :is-web-g-p-u="isWebGPU"
       @open-about="showAboutModal = true"
     />
 
-    <!-- Unified Renaissance Console at Bottom Center (No Eye-Jumping!) -->
-    <footer class="bottom-bar interactive">
-      <!-- SHELF MODE: Unified Editorial Status & Folio Indicator -->
-      <div v-if="!isBookOpen" class="shelf-console">
-        <!-- Unified Editorial Status Banner (Always at the exact same location!) -->
-        <div class="console-status">
-          <transition name="status-fade" mode="out-in">
-            <div v-if="hoveredProject" :key="'hover-' + hoveredIndex" class="status-hover">
-              <span class="status-roman">FOLIO {{ romanNumerals[hoveredIndex ?? 0] }}</span>
-              <span class="status-title">{{ hoveredProject.title }}</span>
-              <span class="status-sep">•</span>
-              <span class="status-sub">{{ hoveredProject.subtitle }}</span>
-              <span class="status-hint">✦ Click to pull & read</span>
-            </div>
-            <div v-else key="idle" class="status-idle">
-              <span class="status-gem">⚜</span>
-              <span class="status-text">Select a folio from the shelf to explore • เลือกหนังสือที่ชั้นเพื่อเปิดอ่าน</span>
-              <span class="status-gem">⚜</span>
-            </div>
+    <!-- Signature Justine Soulié Bottom Showcase Bar (.work-names) -->
+    <footer class="work-names interactive">
+      <div class="work-names__content">
+        <!-- Interactive Project Title with Click Action -->
+        <button class="work-names__title-btn" @click="openActiveProject" title="View Project Case Study">
+          <transition name="title-slide" mode="out-in">
+            <h1 :key="currentProject.id" class="work-names__title">
+              {{ currentProject.title }}
+            </h1>
           </transition>
+        </button>
+
+        <!-- Signature Justine Soulié Thunder / Lightning SVG Stroke -->
+        <div class="work-names__bar">
+          <svg width="311" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2" />
+          </svg>
         </div>
 
-        <!-- Sleek Roman Numeral Folio Indicator -->
-        <div class="console-nav">
-          <span class="indicator-label">MANUSCRIPTS</span>
-          <div class="indicator-pills">
+        <!-- Project Meta / Type / Year -->
+        <div class="work-names__type">
+          <span class="type-category">{{ currentProject.category }}</span>
+          <span class="type-sep">•</span>
+          <span class="type-stats">{{ currentProject.stats }}</span>
+          <span class="type-sep">•</span>
+          <span class="type-year">{{ currentProject.year }}</span>
+        </div>
+
+        <!-- Action & Navigation Controls -->
+        <div class="work-names__controls">
+          <!-- Quick Index Pagination Pills -->
+          <div class="index-pills">
             <button
               v-for="(p, idx) in PROJECTS"
               :key="p.id"
-              class="indicator-dot"
-              :class="{ 'is-hovered': hoveredIndex === idx, 'is-active': activeIndex === idx }"
-              @click="selectBook(idx)"
+              class="pill-btn"
+              :class="{ 'is-active': activeIndex === idx }"
+              @click="selectProjectIndex(idx)"
               :title="p.title"
             >
-              <span class="dot-num">{{ romanNumerals[idx] }}</span>
+              <span class="pill-num">0{{ idx + 1 }}</span>
             </button>
           </div>
+
+          <!-- Open Case Study CTA -->
+          <button class="case-cta-btn" @click="openActiveProject">
+            <span>Open Case Study</span>
+            <span class="cta-arrow">↗</span>
+          </button>
         </div>
       </div>
 
-      <!-- READING MODE CONTROLS -->
-      <div v-else class="reading-controls">
-        <div class="reading-nav">
-          <button class="nav-arrow" @click="prevBook" title="Previous Folio">← PREV</button>
-          <div class="reading-info">
-            <span class="info-roman">FOLIO {{ currentRoman }}</span>
-            <span class="info-sep">/</span>
-            <span class="info-title">{{ currentProject.title }}</span>
-          </div>
-          <button class="nav-arrow" @click="nextBook" title="Next Folio">NEXT →</button>
-        </div>
-
-        <div class="reading-actions">
-          <button class="chronicle-btn" @click="selectedProject = currentProject" title="View Full Architectural Chronicle">
-            <span>📜 Chronicle & Craft</span>
-          </button>
-          <button class="return-shelf-btn" @click="returnToShelf" title="Return to Shelf">
-            <span>✕ Return to Shelf</span>
-          </button>
-        </div>
+      <!-- Subtle Interaction Guide -->
+      <div class="drag-hint">
+        <span>← DRAG OR SCROLL TO EXPLORE →</span>
       </div>
     </footer>
 
-    <!-- Modals -->
+    <!-- Case Study & About Modals -->
     <ProjectModal :project="selectedProject" @close="selectedProject = null" />
     <AboutModal :show="showAboutModal" @close="showAboutModal = false" />
   </div>
@@ -101,69 +98,43 @@ const activeIndex = ref<number>(0);
 const hoveredIndex = ref<number | null>(null);
 const selectedProject = ref<ProjectItem | null>(null);
 const showAboutModal = ref<boolean>(false);
-const backendName = ref<string>('Initializing...');
+const backendName = ref<string>('Initializing WebGPU...');
 const isWebGPU = ref<boolean>(false);
-const isBookOpen = ref<boolean>(false);
 
-const romanNumerals = ['I', 'II', 'III', 'IV', 'V'];
-const currentRoman = computed(() => romanNumerals[activeIndex.value] || 'I');
-const currentProject = computed(() => PROJECTS[activeIndex.value] || PROJECTS[0]);
-const hoveredProject = computed(() => (hoveredIndex.value !== null ? PROJECTS[hoveredIndex.value] : null));
-
-const onBackendReady = (backend: string) => {
-  backendName.value = backend;
-  isWebGPU.value = backend.includes('WebGPU');
-};
-
-const onBookOpenChange = (isOpen: boolean) => {
-  isBookOpen.value = isOpen;
-};
-
-const onHoverBookChange = (index: number | null) => {
-  hoveredIndex.value = index;
-};
+const currentProject = computed<ProjectItem>(() => {
+  return PROJECTS[activeIndex.value] || PROJECTS[0];
+});
 
 const onSelectProject = (project: ProjectItem) => {
   selectedProject.value = project;
 };
 
 const onActiveIndexChange = (index: number) => {
-  const clamped = Math.max(0, Math.min(PROJECTS.length - 1, index));
-  activeIndex.value = clamped;
+  activeIndex.value = index;
 };
 
-const onWheelDelta = (dir: number) => {
-  if (isBookOpen.value) {
-    if (dir > 0) nextBook();
-    else prevBook();
-  } else {
-    // In shelf mode: cycle active book
-    const nextIdx = (activeIndex.value + dir + PROJECTS.length) % PROJECTS.length;
-    activeIndex.value = nextIdx;
-  }
+const onHoverBookChange = (index: number | null) => {
+  hoveredIndex.value = index;
 };
 
-const selectBook = (index: number) => {
+const onWheelDelta = (_dir: number) => {
+  // Wheel physics handled inside engine
+};
+
+const onBackendReady = (backend: string) => {
+  backendName.value = backend;
+  isWebGPU.value = backend.includes('WebGPU');
+};
+
+const selectProjectIndex = (index: number) => {
   activeIndex.value = index;
   if (webgpuCanvasRef.value) {
     webgpuCanvasRef.value.selectBookFromShelf(index);
   }
 };
 
-const returnToShelf = () => {
-  if (webgpuCanvasRef.value) {
-    webgpuCanvasRef.value.returnBookToShelf();
-  }
-};
-
-const prevBook = () => {
-  const nextIdx = (activeIndex.value - 1 + PROJECTS.length) % PROJECTS.length;
-  selectBook(nextIdx);
-};
-
-const nextBook = () => {
-  const nextIdx = (activeIndex.value + 1) % PROJECTS.length;
-  selectBook(nextIdx);
+const openActiveProject = () => {
+  selectedProject.value = currentProject.value;
 };
 </script>
 
@@ -173,312 +144,213 @@ const nextBook = () => {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  background-color: #f4f0ed;
 }
 
-/* Bottom Bar Dock */
-.bottom-bar {
+/* Subtle Film Noise Texture Overlay (Pure CSS/SVG) */
+.noise-overlay {
   position: fixed;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  inset: 0;
+  z-index: 2;
   pointer-events: none;
-  max-width: 90vw;
+  opacity: 0.042;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
-/* Unified Renaissance Console (Eliminates eye-jumping between top and bottom) */
-.shelf-console {
+/* Signature Justine Soulié Bottom Bar (.work-names) */
+.work-names {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: 0 48px 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  pointer-events: none;
+}
+
+.work-names__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   pointer-events: auto;
 }
 
-.console-status {
-  background: rgba(18, 12, 7, 0.86);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  border-radius: 999px;
-  padding: 8px 24px;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.65), 0 0 16px rgba(212, 175, 55, 0.12);
-  min-height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.status-idle {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #ebdcc6;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-}
-
-.status-gem {
-  color: #d4af37;
-  font-size: 14px;
-}
-
-.status-hover {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
-}
-
-.status-roman {
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  color: #d4af37;
-}
-
-.status-title {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 500;
-  color: #fff9ee;
-  letter-spacing: 0.08em;
-}
-
-.status-sep {
-  color: rgba(212, 175, 55, 0.4);
-  font-size: 12px;
-}
-
-.status-sub {
-  font-family: var(--font-body);
-  font-size: 12px;
-  color: #cfbeaa;
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.status-hint {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: #1a0e05;
-  background: #d4af37;
-  padding: 3px 10px;
-  border-radius: 999px;
-  text-transform: uppercase;
-}
-
-/* Console Nav - Minimalist Folio Indicator */
-.console-nav {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(18, 12, 7, 0.78);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(212, 175, 55, 0.28);
-  border-radius: 999px;
-  padding: 5px 16px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-}
-
-.indicator-label {
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  color: #c7b08f;
-}
-
-.indicator-pills {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.indicator-dot {
-  background: transparent;
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  color: #e5d7c3;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.work-names__title-btn {
+  background: none;
+  border: none;
+  padding: 0;
   cursor: pointer;
-  transition: all 0.25s ease;
-  font-family: var(--font-display);
-  font-size: 10px;
-  letter-spacing: 0.05em;
+  outline: none;
 }
 
-.indicator-dot:hover,
-.indicator-dot.is-hovered {
-  border-color: #d4af37;
-  color: #1a0f07;
-  background: #d4af37;
+.work-names__title {
+  font-family: var(--font-display);
+  font-size: clamp(34px, 5.2vw, 68px);
+  font-weight: 700;
+  color: #252422;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1), color 0.25s ease;
+}
+
+.work-names__title-btn:hover .work-names__title {
+  color: #e56b55;
   transform: translateY(-2px);
-  box-shadow: 0 0 14px rgba(212, 175, 55, 0.7);
 }
 
-.indicator-dot.is-active {
-  border-color: #d4af37;
-  color: #fff8eb;
-  background: rgba(212, 175, 55, 0.28);
+/* Signature Lightning SVG Divider */
+.work-names__bar {
+  margin: 12px 0 10px;
+  color: #252422;
+  opacity: 0.85;
 }
 
-/* Reading Mode Controls */
-.reading-controls {
+.work-names__bar svg {
+  display: block;
+  width: clamp(200px, 24vw, 311px);
+  height: auto;
+}
+
+.work-names__type {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  width: min(840px, 92vw);
-  background: rgba(18, 12, 7, 0.88);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  border-radius: 999px;
-  padding: 8px 24px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(212, 175, 55, 0.12);
-  pointer-events: auto;
-}
-
-.reading-nav {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.nav-arrow {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 999px;
-  padding: 6px 14px;
-  color: #e5d8c3;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  transition: all 0.25s ease;
-}
-
-.nav-arrow:hover {
-  background: #d4af37;
-  color: #1a0e05;
-}
-
-.reading-info {
-  display: flex;
-  align-items: baseline;
   gap: 8px;
-  font-family: var(--font-display);
-  color: #fff4e0;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8c8080;
+  margin-bottom: 16px;
 }
 
-.info-roman {
-  font-size: 14px;
-  font-weight: 600;
-  color: #d4af37;
+.type-sep {
+  opacity: 0.4;
 }
 
-.info-sep {
-  opacity: 0.5;
+.work-names__controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Index Pagination Pills */
+.index-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pill-btn {
+  background: none;
+  border: none;
+  padding: 6px 8px;
   font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #8c8080;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
 }
 
-.info-title {
-  font-family: var(--font-body);
+.pill-btn:hover {
+  color: #252422;
+}
+
+.pill-btn.is-active {
+  color: #252422;
+}
+
+.pill-btn.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: #252422;
+  border-radius: 1px;
+}
+
+/* Open Case Study CTA Button */
+.case-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  background: #252422;
+  border: 1px solid #252422;
+  color: #ffffff;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.case-cta-btn:hover {
+  background: #e56b55;
+  border-color: #e56b55;
+  transform: translateY(-1px);
+}
+
+.cta-arrow {
+  font-size: 13px;
+  transition: transform 0.2s ease;
+}
+
+.case-cta-btn:hover .cta-arrow {
+  transform: translate(2px, -2px);
+}
+
+/* Subtle Bottom Drag Hint */
+.drag-hint {
+  margin-top: 14px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: #b0a8a0;
   text-transform: uppercase;
 }
 
-.reading-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* Title Transition */
+.title-slide-enter-active,
+.title-slide-leave-active {
+  transition: all 0.24s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
-.chronicle-btn {
-  background: rgba(212, 175, 55, 0.18);
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  border-radius: 999px;
-  padding: 6px 16px;
-  color: #fff8ee;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  transition: all 0.25s ease;
-}
-
-.chronicle-btn:hover {
-  background: #d4af37;
-  color: #1a0e05;
-}
-
-.return-shelf-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 999px;
-  padding: 6px 16px;
-  color: #e5d8c3;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  transition: all 0.25s ease;
-}
-
-.return-shelf-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-}
-
-/* Animations */
-.status-fade-enter-active,
-.status-fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.status-fade-enter-from {
+.title-slide-enter-from {
   opacity: 0;
-  transform: translateY(4px);
+  transform: translateY(8px);
 }
 
-.status-fade-leave-to {
+.title-slide-leave-to {
   opacity: 0;
-  transform: translateY(-4px);
+  transform: translateY(-8px);
 }
 
 @media (max-width: 768px) {
-  .status-sub {
+  .work-names {
+    padding: 0 20px 24px;
+  }
+  .work-names__type {
+    font-size: 11px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .type-stats {
     display: none;
   }
-  .status-sep {
+  .drag-hint {
     display: none;
-  }
-  .reading-controls {
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px 18px;
-    border-radius: 16px;
   }
 }
 </style>

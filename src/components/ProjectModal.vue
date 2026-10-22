@@ -3,37 +3,43 @@
     <Transition name="fade-scale">
       <div v-if="project" class="modal-backdrop interactive" @click.self="$emit('close')">
         <div
-          class="manuscript-card selectable-text"
+          class="case-card selectable-text"
           :style="{
-            '--accent': project.accentColor,
-            '--secondary': project.secondaryColor,
-            '--accent-glow': project.accentColor + '38'
+            '--accent': project.accentColor || '#e56b55',
+            '--secondary': project.secondaryColor || '#736c60'
           }"
         >
-          <!-- Top Ornament -->
-          <div class="card-ornament top">
-            <span class="ornament-line"></span>
-            <span class="ornament-symbol">❦</span>
-            <span class="ornament-line"></span>
-          </div>
-
+          <!-- Close button -->
           <button class="close-btn" @click="$emit('close')" aria-label="Close">✕</button>
 
+          <!-- Header -->
           <div class="modal-header">
-            <span class="category-pill">{{ project.category }} • {{ project.year }}</span>
+            <div class="header-meta">
+              <span class="category-pill">{{ project.category.toUpperCase() }}</span>
+              <span class="year-pill">{{ project.year }}</span>
+            </div>
+
             <h2 class="project-title">{{ project.title }}</h2>
             <p class="project-subtitle">{{ project.subtitle }}</p>
+
+            <!-- Signature Justine Soulié thunder / stroke SVG divider -->
+            <div class="thunder-bar">
+              <svg width="240" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2" />
+              </svg>
+            </div>
           </div>
 
+          <!-- Body -->
           <div class="modal-body">
-            <div class="description-section">
-              <h3 class="section-label">CHRONICLE</h3>
+            <div class="section-block">
+              <h3 class="section-label">OVERVIEW</h3>
               <p class="description-text">{{ project.description }}</p>
             </div>
 
             <!-- Architectural Highlights -->
-            <div v-if="project.highlights && project.highlights.length" class="highlights-section">
-              <h3 class="section-label">ARCHITECTURAL HIGHLIGHTS</h3>
+            <div v-if="project.highlights && project.highlights.length" class="section-block">
+              <h3 class="section-label">TECHNICAL HIGHLIGHTS</h3>
               <ul class="highlights-list">
                 <li v-for="(h, idx) in project.highlights" :key="idx" class="highlight-item">
                   <span class="highlight-bullet">✦</span>
@@ -42,24 +48,21 @@
               </ul>
             </div>
 
+            <!-- Meta Details -->
             <div class="meta-grid">
               <div class="meta-item">
                 <span class="meta-label">ROLE</span>
                 <span class="meta-value">{{ project.role }}</span>
               </div>
               <div class="meta-item">
-                <span class="meta-label">ACHIEVEMENT</span>
+                <span class="meta-label">KEY STAT</span>
                 <span class="meta-value">{{ project.stats }}</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">PALETTE THEME</span>
-                <span class="meta-value">{{ project.paletteTheme }}</span>
               </div>
             </div>
 
             <!-- Color Palette Chips -->
-            <div v-if="project.paletteColors && project.paletteColors.length" class="palette-section">
-              <span class="meta-label">RENAISSANCE PIGMENT PALETTE</span>
+            <div v-if="project.paletteColors && project.paletteColors.length" class="section-block">
+              <span class="section-label">ART DIRECTION PALETTE</span>
               <div class="palette-chips">
                 <div
                   v-for="(color, cIdx) in project.paletteColors"
@@ -73,8 +76,9 @@
               </div>
             </div>
 
-            <div class="tags-section">
-              <span class="meta-label">TECHNOLOGIES & CRAFT</span>
+            <!-- Technologies -->
+            <div class="section-block">
+              <span class="section-label">TECH STACK</span>
               <div class="tags-list">
                 <span v-for="tag in project.tags" :key="tag" class="tag-badge">
                   {{ tag }}
@@ -83,6 +87,7 @@
             </div>
           </div>
 
+          <!-- Footer Actions -->
           <div class="modal-footer">
             <div class="action-links">
               <a
@@ -92,7 +97,8 @@
                 rel="noopener noreferrer"
                 class="cta-btn primary-cta"
               >
-                Visit Live Archive ↗
+                <span>Visit Live Archive</span>
+                <span class="cta-arrow">↗</span>
               </a>
               <a
                 v-if="project.githubUrl"
@@ -101,11 +107,13 @@
                 rel="noopener noreferrer"
                 class="cta-btn secondary-cta"
               >
-                Source Code ↗
+                <span>Source Code</span>
+                <span class="cta-arrow">↗</span>
               </a>
             </div>
-            <button class="close-action-btn" @click="$emit('close')">
-              Return to Gallery
+
+            <button class="return-btn" @click="$emit('close')">
+              Return to Showcase
             </button>
           </div>
         </div>
@@ -131,7 +139,7 @@ defineEmits<{
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(12, 8, 4, 0.82);
+  background: rgba(37, 36, 34, 0.45);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   display: flex;
@@ -140,191 +148,182 @@ defineEmits<{
   padding: 24px;
 }
 
-.manuscript-card {
+.case-card {
   position: relative;
   width: 100%;
-  max-width: 660px;
-  background: rgba(20, 13, 8, 0.94);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8), 0 0 32px var(--accent-glow);
-  border-radius: 12px;
-  padding: 36px 42px;
-  color: #f7eedd;
-  max-height: 90vh;
+  max-width: 680px;
+  background: #fdfcf9;
+  border: 1px solid rgba(37, 36, 34, 0.12);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.16);
+  border-radius: 16px;
+  padding: 44px 48px;
+  color: #252422;
+  max-height: 88vh;
   overflow-y: auto;
-  user-select: text;
+  font-family: var(--font-body);
 }
 
 .close-btn {
   position: absolute;
-  top: 18px;
-  right: 22px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 14px;
-  color: #d4af37;
+  top: 24px;
+  right: 26px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #8c8080;
   cursor: pointer;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .close-btn:hover {
-  background: #d4af37;
-  color: #1a0e05;
+  color: #252422;
   transform: rotate(90deg);
 }
 
-.card-ornament {
+.modal-header {
+  margin-bottom: 28px;
+}
+
+.header-meta {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-bottom: 18px;
-  color: var(--accent);
-}
-
-.ornament-line {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.6;
-}
-
-.ornament-symbol {
-  font-size: 16px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .category-pill {
-  display: inline-block;
-  font-family: var(--font-body);
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   color: var(--accent);
-  margin-bottom: 8px;
+}
+
+.year-pill {
+  font-size: 12px;
+  color: #8c8080;
+  font-weight: 400;
 }
 
 .project-title {
-  font-family: var(--font-display);
-  font-size: 34px;
-  color: #fff9ee;
-  margin-bottom: 6px;
-  line-height: 1.18;
-  letter-spacing: 0.04em;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  font-size: clamp(32px, 4.5vw, 46px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #252422;
+  margin-bottom: 8px;
+  line-height: 1.1;
 }
 
 .project-subtitle {
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: #cbb494;
-  font-weight: 400;
-  margin-bottom: 22px;
-  line-height: 1.45;
+  font-size: 15px;
+  color: #8c8080;
+  line-height: 1.5;
+  margin-bottom: 18px;
 }
 
-.section-label,
-.meta-label {
-  display: block;
-  font-family: var(--font-body);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+.thunder-bar {
   color: var(--accent);
-  margin-bottom: 8px;
+  opacity: 0.75;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #8c8080;
   text-transform: uppercase;
 }
 
 .description-text {
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.7;
-  color: #dfd5c4;
-  margin-bottom: 20px;
-}
-
-/* Highlights */
-.highlights-section {
-  margin-bottom: 20px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: #383531;
 }
 
 .highlights-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .highlight-item {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.55;
-  color: #e5d9c6;
+  color: #383531;
 }
 
 .highlight-bullet {
   color: var(--accent);
-  font-size: 11px;
-  margin-top: 3px;
+  font-size: 12px;
+  margin-top: 2px;
 }
 
 .meta-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 14px;
-  background: rgba(36, 22, 12, 0.65);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  padding: 16px 20px;
-  border-radius: 8px;
-  border-left: 3px solid var(--accent);
-  margin-bottom: 22px;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(37, 36, 34, 0.08);
+  border-bottom: 1px solid rgba(37, 36, 34, 0.08);
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #8c8080;
 }
 
 .meta-value {
   font-size: 13px;
-  font-weight: 600;
-  color: #fff8eb;
-}
-
-/* Pigment Palette Chips */
-.palette-section {
-  margin-bottom: 20px;
+  font-weight: 500;
+  color: #252422;
 }
 
 .palette-chips {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .color-chip {
+  width: 38px;
   height: 28px;
-  padding: 0 10px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
 }
 
 .chip-hex {
-  font-family: monospace;
-  font-size: 9px;
-  font-weight: 600;
-  color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  letter-spacing: 0.05em;
+  display: none;
 }
 
 .tags-list {
@@ -334,97 +333,112 @@ defineEmits<{
 }
 
 .tag-badge {
-  background: rgba(38, 24, 13, 0.8);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  color: #f0e4cf;
-  font-size: 11px;
-  font-weight: 500;
   padding: 5px 12px;
   border-radius: 20px;
-  letter-spacing: 0.03em;
+  background: rgba(37, 36, 34, 0.05);
+  border: 1px solid rgba(37, 36, 34, 0.08);
+  font-size: 12px;
+  font-weight: 500;
+  color: #383531;
 }
 
 .modal-footer {
-  margin-top: 28px;
+  margin-top: 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  border-top: 1px solid rgba(212, 175, 55, 0.18);
-  padding-top: 20px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(37, 36, 34, 0.08);
 }
 
 .action-links {
   display: flex;
-  align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
 .cta-btn {
-  text-decoration: none;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  padding: 9px 20px;
-  border-radius: 6px;
-  transition: all 0.25s ease;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: all 0.25s ease;
 }
 
 .primary-cta {
-  background: var(--accent);
-  color: #1a0f07;
-  box-shadow: 0 4px 16px var(--accent-glow);
+  background: #252422;
+  color: #ffffff;
 }
 
 .primary-cta:hover {
-  filter: brightness(1.15);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px var(--accent-glow);
+  background: var(--accent);
+  transform: translateY(-1px);
 }
 
 .secondary-cta {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  color: #fff9ee;
+  background: transparent;
+  color: #252422;
+  border: 1px solid rgba(37, 36, 34, 0.2);
 }
 
 .secondary-cta:hover {
-  background: rgba(212, 175, 55, 0.2);
-  border-color: #d4af37;
-  transform: translateY(-2px);
+  border-color: #252422;
+  background: rgba(37, 36, 34, 0.04);
 }
 
-.close-action-btn {
+.return-btn {
   background: none;
   border: none;
-  color: #a8947b;
-  font-family: var(--font-body);
+  color: #8c8080;
   font-size: 12px;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  padding: 8px 12px;
-  transition: color 0.2s ease;
+  padding: 8px 0;
+  transition: color 0.2s;
 }
 
-.close-action-btn:hover {
-  color: #fff9ee;
+.return-btn:hover {
+  color: #252422;
 }
 
-/* Animations */
+/* Modal Transitions */
 .fade-scale-enter-active,
 .fade-scale-leave-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.28s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
 .fade-scale-enter-from,
 .fade-scale-leave-to {
   opacity: 0;
-  transform: scale(0.94);
+}
+
+.fade-scale-enter-from .case-card,
+.fade-scale-leave-to .case-card {
+  transform: scale(0.96) translateY(12px);
+}
+
+@media (max-width: 640px) {
+  .case-card {
+    padding: 32px 24px;
+  }
+  .modal-footer {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .action-links {
+    flex-direction: column;
+  }
+  .cta-btn {
+    justify-content: center;
+  }
+  .return-btn {
+    text-align: center;
+  }
 }
 </style>

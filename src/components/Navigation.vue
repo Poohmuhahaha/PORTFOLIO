@@ -1,13 +1,41 @@
 <template>
-  <header class="navigation interactive">
-    <div class="brand">
-      <h1 class="brand-name">PHUWADON THONTRA</h1>
-      <span class="status-dot" :class="{ 'is-webgpu': isWebGPU }" :title="backendName"></span>
+  <header class="app-header">
+    <div class="header-brand">
+      <span class="brand-name">Phuwadon Thontra</span>
+      <span class="brand-role">Creative Developer</span>
+      <span class="webgpu-pill" :class="{ 'is-active': isWebGPU }" :title="backendName">
+        <span class="pill-dot"></span>
+        <span class="pill-text">{{ isWebGPU ? 'WebGPU' : 'WebGL 2' }}</span>
+      </span>
     </div>
 
-    <nav class="nav-links">
-      <button class="nav-btn" @click="$emit('open-about')">About</button>
-      <a href="mailto:thontrapoowadol@gmail.com" class="nav-btn">Contact</a>
+    <nav class="header-nav">
+      <button class="nav-link" @click="$emit('open-about')">
+        <span>ABOUT</span>
+        <div class="nav-svg-c">
+          <svg width="52" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2.2" />
+          </svg>
+        </div>
+      </button>
+
+      <a href="https://github.com/Poohmuhahaha" target="_blank" rel="noopener noreferrer" class="nav-link">
+        <span>GITHUB ↗</span>
+        <div class="nav-svg-c">
+          <svg width="68" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2.2" />
+          </svg>
+        </div>
+      </a>
+
+      <a href="mailto:thontrapoowadol@gmail.com" class="nav-link">
+        <span>CONTACT</span>
+        <div class="nav-svg-c">
+          <svg width="64" height="6" viewBox="0 0 311 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 1H155.026L144.122 5H311" stroke="currentColor" stroke-width="2.2" />
+          </svg>
+        </div>
+      </a>
     </nav>
   </header>
 </template>
@@ -24,7 +52,7 @@ defineEmits<{
 </script>
 
 <style scoped>
-.navigation {
+.app-header {
   position: fixed;
   top: 0;
   left: 0;
@@ -33,87 +61,122 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 36px 56px;
+  padding: 32px 48px;
   pointer-events: none;
+  font-family: var(--font-body);
 }
 
-.brand {
+.header-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   pointer-events: auto;
 }
 
 .brand-name {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 500;
-  color: #f7f2e8;
-  letter-spacing: 0.14em;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  font-size: 16px;
+  font-weight: 600;
+  color: #252422;
+  letter-spacing: -0.01em;
 }
 
-.status-dot {
+.brand-role {
+  font-size: 13px;
+  font-weight: 400;
+  color: #8c8080;
+  letter-spacing: 0.02em;
+}
+
+.webgpu-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: rgba(37, 36, 34, 0.05);
+  border: 1px solid rgba(37, 36, 34, 0.08);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8c8080;
+}
+
+.webgpu-pill.is-active .pill-dot {
+  background: #34c759;
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.6);
+}
+
+.pill-dot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background-color: #cd8db0;
-  box-shadow: 0 0 6px #cd8db0;
+  background: #ff9500;
   transition: all 0.3s ease;
-  opacity: 0.8;
 }
 
-.status-dot.is-webgpu {
-  background-color: #6ce08b;
-  box-shadow: 0 0 8px #6ce08b;
-}
-
-.nav-links {
+.header-nav {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 32px;
   pointer-events: auto;
 }
 
-.nav-btn {
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
   background: none;
   border: none;
-  color: #d8c8b0;
-  text-decoration: none;
+  padding: 4px 0;
+  color: #252422;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  text-decoration: none;
   cursor: pointer;
-  padding: 6px 0;
-  position: relative;
-  transition: color 0.25s ease;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: color 0.2s ease;
 }
 
-.nav-btn::after {
-  content: '';
+.nav-link:hover {
+  color: #e56b55;
+}
+
+/* Signature Justine Soulié thunder / stroke SVG underline */
+.nav-svg-c {
   position: absolute;
-  bottom: 0;
+  bottom: -4px;
   left: 0;
-  width: 0;
-  height: 1px;
-  background: #d8c8b0;
-  transition: width 0.25s ease;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
-.nav-btn:hover {
-  color: #ffffff;
+.nav-svg-c svg {
+  display: block;
 }
 
-.nav-btn:hover::after {
-  width: 100%;
+.nav-link:hover .nav-svg-c {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @media (max-width: 768px) {
-  .navigation {
-    padding: 20px 24px;
+  .app-header {
+    padding: 24px 20px;
+  }
+  .brand-role {
+    display: none;
+  }
+  .header-nav {
+    gap: 18px;
+  }
+  .nav-link {
+    font-size: 11px;
   }
 }
 </style>

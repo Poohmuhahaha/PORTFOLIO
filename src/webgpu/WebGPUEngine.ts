@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import { WebGPURenderer } from 'three/webgpu';
 import { PROJECTS, type ProjectItem } from '../data/projects';
-import { RenaissanceLibrary } from './RenaissanceLibrary';
-import { RenaissanceBook } from './RenaissanceBook';
 
 export interface EngineCallbacks {
   onSelectProject?: (project: ProjectItem) => void;
@@ -12,43 +10,52 @@ export interface EngineCallbacks {
   onHoverBookChange?: (index: number | null) => void;
 }
 
+interface CardItem {
+  project: ProjectItem;
+  index: number;
+  mesh: THREE.Mesh;
+  group: THREE.Group;
+}
+
+/**
+ * Patrick Heng & Justine Soulié inspired WebGL/WebGPU Spring Card Engine
+ * - Dynamic 3D Floating Project Posters
+ * - Direct Drag & Flick Momentum with Spring Physics & Inertia
+ * - Velocity-Driven Tilt (Signature Patrick Heng squash & stretch effect)
+ * - Tactile Paper Canvas & Soft Contact Shadows
+ */
 export class WebGPUEngine {
   private container: HTMLElement;
   private renderer!: WebGPURenderer;
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
-  private books: {
-    book: RenaissanceBook;
-  }[] = [];
+  private cards: CardItem[] = [];
 
-  private particles!: THREE.Points;
-  private particleVelocities: Float32Array = new Float32Array(0);
-  private library!: RenaissanceLibrary;
-
-  // Interaction State: Selecting from the Bookshelf vs Reading on the Lectern
-  private activeFolioIndex = 0;
-  private isReadingMode = false;
-  private hoveredIndex: number | null = null;
-
-  // Mouse & Physics
-  private mouse = new THREE.Vector2(0, 0);
-  private targetMouse = new THREE.Vector2(0, 0);
-  private raycaster = new THREE.Raycaster();
-
-  // Optimization & Idle State
-  private isIdle = false;
-  private idleCounter = 0;
-  private maxIdleFrames = 120;
-  private rafId: number | null = null;
+  // Interaction & Physics
   private callbacks: EngineCallbacks;
+  private raycaster = new THREE.Raycaster();
+  private mouse = new THREE.Vector2();
+  private targetMouse = new THREE.Vector2();
+  private hoveredIndex: number | null = null;
+  private activeIndex = 0;
 
-  public get isEngineIdle(): boolean {
-    return this.isIdle;
-  }
+  // Spring & Drag Physics
+  public scrollCurrent = 0;
+  public scrollTarget = 0;
+  public scrollVelocity = 0;
+  public isDragging = false;
+  private readonly cardSpacing = 3.85;
 
-  public get isCurrentBookOpen(): boolean {
-    return this.isReadingMode;
-  }
+  // Animation & Idle Loop
+  private rafId: number | null = null;
+  public isIdle = false;
+  private idleCounter = 0;
+  private readonly maxIdleFrames = 90;
+
+  // Cleanup references
+  private geometries: THREE.BufferGeometry[] = [];
+  private materials: THREE.Material[] = [];
+  private textures: THREE.Texture[] = [];
 
   constructor(container: HTMLElement, callbacks: EngineCallbacks = {}) {
     this.container = container;
@@ -59,172 +66,384 @@ export class WebGPUEngine {
     const width = this.container.clientWidth || window.innerWidth;
     const height = this.container.clientHeight || window.innerHeight;
 
-    // 1. Scene
+    // 1. Scene & Warm Editorial Paper Canvas
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#1c3347');
+    this.scene.background = new THREE.Color(0xf4f0ed);
 
-    // 2. Camera (Framed eye-level facing the Renaissance Showcase Shelf)
-    this.camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 80);
-    this.camera.position.set(0, 0.65, 6.4);
-    this.camera.lookAt(0, -0.15, 0);
+    // 2. Camera Setup (Optimal FOV for vertical editorial posters)
+    this.camera = new THREE.PerspectiveCamera(44, width / height, 0.1, 80);
+    this.camera.position.set(0, 0, 7.8);
+    this.camera.lookAt(0, 0, 0);
 
-    // 3. WebGPU Renderer with automatic WebGL2 Fallback
+    // 3. WebGPU Renderer initialization with fallback
     this.renderer = new WebGPURenderer({
       antialias: true,
-      alpha: false,
-      forceWebGL: false
+      powerPreference: 'high-performance'
     });
 
+    this.renderer.setSize(width, height);
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     this.renderer.setPixelRatio(dpr);
-    this.renderer.setSize(width, height);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.08;
+
     this.container.appendChild(this.renderer.domElement);
 
-    await this.renderer.init();
-
-    const isWebGPU = (this.renderer.backend as any)?.isWebGPUBackend;
-    const backendName = isWebGPU ? 'WebGPU' : 'WebGL2 (Fallback)';
-    if (this.callbacks.onBackendReady) {
-      this.callbacks.onBackendReady(backendName);
+    try {
+      await this.renderer.init();
+      if (this.callbacks.onBackendReady) {
+        this.callbacks.onBackendReady('WebGPU (Next-Gen Graphics)');
+      }
+    } catch {
+      if (this.callbacks.onBackendReady) {
+        this.callbacks.onBackendReady('WebGL 2.0 (High Performance)');
+      }
     }
 
-    // 4. Physically Accurate Lighting & Soft Shadows
+    // 4. Studio Museum Lighting
     this.setupLighting();
 
-    // 5. Build 3D Renaissance Library with Showcase Shelf & Arched Window
-    this.library = new RenaissanceLibrary();
-    this.scene.add(this.library.group);
+    // 5. Shadow-Receiving Paper Backdrop
+    this.buildBackdrop();
 
-    // 6. Build the 5 Antique Leather Tomes on the Shelf
-    this.buildBooks();
+    // 6. Build Floating Project Cards
+    this.buildCards();
 
-    // 7. Golden Dust Atmosphere
-    this.buildGoldenDust();
-
-    // 8. Event listeners
+    // 7. Event listeners & Render Loop
     this.setupEvents();
-
-    // 9. Start Render Loop
     this.startLoop();
   }
 
   private setupLighting(): void {
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
-
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-    // Ambient Hemisphere Dome Light (Rich Chiaroscuro: Warm Tuscan golden hour & warm walnut ground bounce)
-    const hemiLight = new THREE.HemisphereLight(0xffecd0, 0x5a3e28, 0.75);
+    // Ambient light with soft warm tint
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0xe8e2dc, 1.15);
     this.scene.add(hemiLight);
 
-    // Directional Sunlight Streaming from Top-Left through the Arch Window onto the Scholar's Desk
-    const sunLight = new THREE.DirectionalLight(0xfff4e0, 3.2);
-    sunLight.position.set(-9, 14, 8);
-    sunLight.target.position.set(0, -1.0, 0.2);
+    // Key directional light creating soft, tactile card drop shadows
+    const sunLight = new THREE.DirectionalLight(0xfff9f2, 1.8);
+    sunLight.position.set(-6, 9, 8);
+    sunLight.target.position.set(0, 0, 0);
     this.scene.add(sunLight.target);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 1.0;
-    sunLight.shadow.camera.far = 35;
-    sunLight.shadow.camera.left = -7;
-    sunLight.shadow.camera.right = 7;
+    sunLight.shadow.camera.far = 25;
+    sunLight.shadow.camera.left = -9;
+    sunLight.shadow.camera.right = 9;
     sunLight.shadow.camera.top = 7;
     sunLight.shadow.camera.bottom = -7;
-    sunLight.shadow.bias = -0.0001;
+    sunLight.shadow.bias = -0.00015;
     this.scene.add(sunLight);
 
-    // Warm Amber Fill Light (Soft luminous bounce from the right side)
-    const fillLight = new THREE.DirectionalLight(0xf5d8b8, 0.85);
-    fillLight.position.set(8, 6, 8);
+    // Soft fill light from the lower-right
+    const fillLight = new THREE.DirectionalLight(0xf5ebe0, 0.65);
+    fillLight.position.set(7, -3, 6);
     this.scene.add(fillLight);
   }
 
-  /**
-   * Dedicated slot position on the showcase shelf for each book
-   * Synchronized with the desk shelf rack at z = -0.15, resting firmly on the wood deck
-   */
-  public getShelfSlotPos(index: number): THREE.Vector3 {
-    return new THREE.Vector3(-2.6 + index * 1.30, -0.78, -0.15);
+  private buildBackdrop(): void {
+    // Large seamless paper wall behind cards to capture soft contact shadows
+    const wallGeo = new THREE.PlaneGeometry(38, 26);
+    this.geometries.push(wallGeo);
+
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: 0xf4f0ed,
+      roughness: 0.95,
+      metalness: 0.0
+    });
+    this.materials.push(wallMat);
+
+    const wall = new THREE.Mesh(wallGeo, wallMat);
+    wall.position.set(0, 0, -0.45);
+    wall.receiveShadow = true;
+    this.scene.add(wall);
   }
 
-  private buildBooks(): void {
+  private buildCards(): void {
+    const cardW = 3.05;
+    const cardH = 4.15;
+    const cardD = 0.06;
+
     PROJECTS.forEach((project, index) => {
-      const book = new RenaissanceBook(project, index);
-      const slot = this.getShelfSlotPos(index);
+      const cardGroup = new THREE.Group();
 
-      // Start docked in its slot on the shelf
-      book.group.position.copy(slot);
-      book.group.scale.set(0.58, 0.58, 0.58);
-      book.group.rotation.set(-0.04, 0, 0);
-      book.group.userData = { project, index, book };
+      // Front Poster Artwork Texture
+      const posterTex = this.generateProjectPosterTexture(project, index);
+      const posterMat = new THREE.MeshStandardMaterial({
+        map: posterTex,
+        roughness: 0.38,
+        metalness: 0.04
+      });
+      this.materials.push(posterMat);
 
-      this.scene.add(book.group);
-      this.books.push({ book });
+      // Card Back & Rim Material (Paper core)
+      const rimMat = new THREE.MeshStandardMaterial({
+        color: 0xded8d0,
+        roughness: 0.82,
+        metalness: 0.02
+      });
+      this.materials.push(rimMat);
+
+      // Multi-material box: [right, left, top, bottom, front, back]
+      const cardMaterials: THREE.Material[] = [
+        rimMat,
+        rimMat,
+        rimMat,
+        rimMat,
+        posterMat, // Front Face
+        rimMat    // Back Face
+      ];
+
+      const cardGeo = new THREE.BoxGeometry(cardW, cardH, cardD, 4, 4, 1);
+      this.geometries.push(cardGeo);
+
+      const cardMesh = new THREE.Mesh(cardGeo, cardMaterials);
+      cardMesh.castShadow = true;
+      cardMesh.receiveShadow = true;
+      cardMesh.userData = { project, index };
+
+      cardGroup.add(cardMesh);
+      cardGroup.position.set(index * this.cardSpacing, 0, 0);
+
+      this.scene.add(cardGroup);
+      this.cards.push({ project, index, mesh: cardMesh, group: cardGroup });
     });
   }
 
-  private buildGoldenDust(): void {
-    const particleCount = 6000;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-    const colors = new Float32Array(particleCount * 3);
-    this.particleVelocities = new Float32Array(particleCount * 3);
+  /**
+   * Generates bespoke, high-resolution graphic poster textures for each project
+   * in Justine Soulié's award-winning artistic style
+   */
+  private generateProjectPosterTexture(project: ProjectItem, index: number): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1400;
+    const ctx = canvas.getContext('2d')!;
 
-    const paletteColors = [
-      new THREE.Color('#e5c69f'),
-      new THREE.Color('#c6b18f'),
-      new THREE.Color('#b19c73'),
-      new THREE.Color('#f0e9dc'),
-      new THREE.Color('#92743e')
-    ];
+    // 1. Curated Project Base Tone
+    const bgGradients: Record<string, [string, string]> = {
+      artibition: ['#28221b', '#17130f'],
+      huuk: ['#f8f5f0', '#ece4d8'],
+      pugu: ['#1e2530', '#10141a'],
+      pos: ['#181a19', '#0d0f0e'],
+      'cloud-engine': ['#231c19', '#140f0d']
+    };
 
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      positions[i3] = (Math.random() - 0.5) * 14;
-      positions[i3 + 1] = (Math.random() - 0.5) * 20;
-      positions[i3 + 2] = (Math.random() - 0.5) * 8;
+    const isLightCard = project.id === 'huuk';
+    const [c1, c2] = bgGradients[project.id] || ['#25201b', '#14110e'];
 
-      this.particleVelocities[i3] = (Math.random() - 0.5) * 0.002;
-      this.particleVelocities[i3 + 1] = Math.random() * 0.003 + 0.001;
-      this.particleVelocities[i3 + 2] = (Math.random() - 0.5) * 0.002;
+    const grad = ctx.createLinearGradient(0, 0, 1024, 1400);
+    grad.addColorStop(0, c1);
+    grad.addColorStop(1, c2);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1024, 1400);
 
-      const col = paletteColors[Math.floor(Math.random() * paletteColors.length)];
-      colors[i3] = col.r;
-      colors[i3 + 1] = col.g;
-      colors[i3 + 2] = col.b;
+    // 2. Tactile Frame Border
+    ctx.strokeStyle = isLightCard ? 'rgba(40, 30, 20, 0.12)' : 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(40, 40, 944, 1320);
+
+    // 3. Top Header Bar: Roman Numeral & Year
+    const textColor = isLightCard ? '#252422' : '#f5ebe0';
+    const subColor = isLightCard ? '#8c8080' : 'rgba(245, 235, 224, 0.65)';
+    const accentColor = project.accentColor || '#e56b55';
+
+    ctx.fillStyle = subColor;
+    ctx.font = '500 24px Inter, sans-serif';
+    ctx.letterSpacing = '0.12em';
+    ctx.fillText(`NO. 0${index + 1}`, 72, 95);
+    ctx.textAlign = 'right';
+    ctx.fillText(project.year.toUpperCase(), 952, 95);
+    ctx.textAlign = 'left';
+
+    // Thin header divider line
+    ctx.strokeStyle = isLightCard ? 'rgba(40, 30, 20, 0.08)' : 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(72, 120);
+    ctx.lineTo(952, 120);
+    ctx.stroke();
+
+    // 4. Unique Abstract Creative Artwork per Project
+    ctx.save();
+    this.renderPosterArt(ctx, project.id, accentColor, isLightCard);
+    ctx.restore();
+
+    // 5. Project Category & Tag Pill
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(72, 1140, 14, 14);
+
+    ctx.fillStyle = subColor;
+    ctx.font = '600 22px Inter, sans-serif';
+    ctx.fillText(project.category.toUpperCase(), 102, 1152);
+
+    // 6. Bold Project Title
+    ctx.fillStyle = textColor;
+    ctx.font = '700 68px Inter, sans-serif';
+    ctx.fillText(project.title.toUpperCase(), 72, 1235);
+
+    // 7. Subtitle / One-line craft narrative
+    ctx.fillStyle = subColor;
+    ctx.font = '400 26px Inter, sans-serif';
+    const subText = project.subtitle.length > 42 ? project.subtitle.slice(0, 40) + '...' : project.subtitle;
+    ctx.fillText(subText, 72, 1285);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    this.textures.push(texture);
+    return texture;
+  }
+
+  /**
+   * Draws distinct, Patrick Heng / Justine Soulié geometric illustrations per project
+   */
+  private renderPosterArt(ctx: CanvasRenderingContext2D, id: string, accent: string, _isLight: boolean): void {
+    const cx = 512;
+    const cy = 620;
+
+    switch (id) {
+      case 'artibition': {
+        // Classical Roman Arch with Perspective Wireframe & Gilded Orb
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 80, 220, Math.PI, 0, false);
+        ctx.lineTo(cx + 220, cy + 280);
+        ctx.lineTo(cx - 220, cy + 280);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Inner glowing sphere
+        const orbGrad = ctx.createRadialGradient(cx - 40, cy - 120, 10, cx, cy - 80, 160);
+        orbGrad.addColorStop(0, '#ffffff');
+        orbGrad.addColorStop(0.4, accent);
+        orbGrad.addColorStop(1, 'rgba(23, 19, 15, 0)');
+        ctx.fillStyle = orbGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 80, 150, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Architectural horizontal lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 2;
+        for (let y = cy - 20; y < cy + 260; y += 40) {
+          ctx.beginPath();
+          ctx.moveTo(cx - 180, y);
+          ctx.lineTo(cx + 180, y);
+          ctx.stroke();
+        }
+        break;
+      }
+
+      case 'huuk': {
+        // Multi-layered editorial publishing cards
+        const cardColors = ['#cd8db0', '#a5896f', '#736c60'];
+        [-50, 0, 50].forEach((ox, i) => {
+          ctx.save();
+          ctx.translate(cx + ox, cy + (i - 1) * 35);
+          ctx.rotate((i - 1) * 0.14);
+          ctx.fillStyle = cardColors[i];
+          ctx.beginPath();
+          ctx.roundRect(-160, -200, 320, 380, 24);
+          ctx.fill();
+
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+          ctx.restore();
+        });
+        break;
+      }
+
+      case 'pugu': {
+        // Playful gamified concentric rings and isometric clockwork
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 8;
+        for (let r = 80; r <= 280; r += 55) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Vibrant center companion glyph
+        const pGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 110);
+        pGrad.addColorStop(0, '#ffffff');
+        pGrad.addColorStop(0.5, '#4f5b6b');
+        pGrad.addColorStop(1, '#cd8db0');
+        ctx.fillStyle = pGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 95, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+
+      case 'pos': {
+        // Precision engineering grid & glowing touch nexus
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 3;
+        const gridStep = 45;
+        for (let x = cx - 220; x <= cx + 220; x += gridStep) {
+          ctx.beginPath();
+          ctx.moveTo(x, cy - 220);
+          ctx.lineTo(x, cy + 220);
+          ctx.stroke();
+        }
+        for (let y = cy - 220; y <= cy + 220; y += gridStep) {
+          ctx.beginPath();
+          ctx.moveTo(cx - 220, y);
+          ctx.lineTo(cx + 220, y);
+          ctx.stroke();
+        }
+
+        // Diamond reticle
+        ctx.strokeStyle = '#6ce08b';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 130);
+        ctx.lineTo(cx + 130, cy);
+        ctx.lineTo(cx, cy + 130);
+        ctx.lineTo(cx - 130, cy);
+        ctx.closePath();
+        ctx.stroke();
+        break;
+      }
+
+      default: {
+        // Cloud Engine: Cosmic distributed node topology
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 4;
+        const nodes: [number, number][] = [
+          [cx, cy - 160],
+          [cx + 180, cy - 60],
+          [cx + 140, cy + 140],
+          [cx - 140, cy + 140],
+          [cx - 180, cy - 60],
+          [cx, cy + 30]
+        ];
+
+        nodes.forEach(([nx, ny]) => {
+          nodes.forEach(([mx, my]) => {
+            ctx.beginPath();
+            ctx.moveTo(nx, ny);
+            ctx.lineTo(mx, my);
+            ctx.stroke();
+          });
+        });
+
+        nodes.forEach(([nx, ny]) => {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(nx, ny, 16, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = accent;
+          ctx.stroke();
+        });
+        break;
+      }
     }
-
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-    const pCanvas = document.createElement('canvas');
-    pCanvas.width = 32;
-    pCanvas.height = 32;
-    const pCtx = pCanvas.getContext('2d')!;
-    const radGrad = pCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    radGrad.addColorStop(0, 'rgba(255, 245, 220, 1.0)');
-    radGrad.addColorStop(0.3, 'rgba(229, 198, 159, 0.65)');
-    radGrad.addColorStop(1, 'rgba(146, 116, 62, 0.0)');
-    pCtx.fillStyle = radGrad;
-    pCtx.fillRect(0, 0, 32, 32);
-
-    const pTex = new THREE.CanvasTexture(pCanvas);
-
-    const pMaterial = new THREE.PointsMaterial({
-      size: 0.14,
-      map: pTex,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.7,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-
-    this.particles = new THREE.Points(geometry, pMaterial);
-    this.scene.add(this.particles);
   }
 
   private setupEvents(): void {
@@ -244,34 +463,60 @@ export class WebGPUEngine {
     this.wakeUp();
   };
 
-  public updateScroll(scrollFraction: number, _velocity: number): void {
-    // Scrolling scrolls through the 5 folios
-    const index = Math.round(scrollFraction * (PROJECTS.length - 1));
-    if (this.isReadingMode && index !== this.activeFolioIndex) {
-      this.selectBookFromShelf(index);
-    }
+  /**
+   * Applies tactile drag delta from pointer/finger directly into the carousel
+   */
+  public applyDragDelta(dx: number): void {
+    this.isDragging = true;
+    const factor = -dx * 0.0034;
+    this.scrollCurrent += factor;
+    this.scrollVelocity = factor;
+    this.scrollTarget = Math.round(this.scrollCurrent);
     this.wakeUp();
+  }
+
+  /**
+   * Finishes drag gesture and engages spring snapping to nearest project
+   */
+  public endDrag(): void {
+    this.isDragging = false;
+    this.scrollTarget = Math.max(0, Math.min(PROJECTS.length - 1, Math.round(this.scrollCurrent)));
+    this.wakeUp();
+  }
+
+  /**
+   * Smooth mouse wheel scrolling with momentum
+   */
+  public applyWheelDelta(dir: number): void {
+    const nextIndex = Math.max(0, Math.min(PROJECTS.length - 1, this.scrollTarget + dir));
+    this.selectProject(nextIndex);
   }
 
   public updatePointer(ndcX: number, ndcY: number, isDragging: boolean = false): void {
     this.targetMouse.set(ndcX, ndcY);
 
-    // Raycast to detect book hover on the shelf
+    if (isDragging !== this.isDragging) {
+      this.isDragging = isDragging;
+      if (!isDragging) {
+        this.endDrag();
+      }
+    }
+
+    // Raycast to detect card hover
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const intersects = this.raycaster.intersectObjects(
-      this.books.map((b) => b.book.group),
+      this.cards.map((c) => c.mesh),
       true
     );
 
     let newHovered: number | null = null;
     if (intersects.length > 0) {
       let obj: THREE.Object3D | null = intersects[0].object;
-      while (obj && !obj.userData?.book && obj.parent) {
+      while (obj && obj.userData?.index === undefined && obj.parent) {
         obj = obj.parent;
       }
-      if (obj && obj.userData?.book) {
-        const book = obj.userData.book as RenaissanceBook;
-        newHovered = book.index;
+      if (obj && obj.userData?.index !== undefined) {
+        newHovered = obj.userData.index as number;
       }
     }
 
@@ -284,9 +529,7 @@ export class WebGPUEngine {
       this.wakeUp();
     }
 
-    if (isDragging) {
-      this.wakeUp();
-    }
+    this.wakeUp();
   }
 
   public handleClick(event: MouseEvent): void {
@@ -296,73 +539,54 @@ export class WebGPUEngine {
 
     this.raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
     const intersects = this.raycaster.intersectObjects(
-      this.books.map((b) => b.book.group),
+      this.cards.map((c) => c.mesh),
       true
     );
 
     if (intersects.length > 0) {
       let obj: THREE.Object3D | null = intersects[0].object;
-      while (obj && !obj.userData?.book && obj.parent) {
+      while (obj && obj.userData?.index === undefined && obj.parent) {
         obj = obj.parent;
       }
-      if (obj && obj.userData?.book) {
-        const book = obj.userData.book as RenaissanceBook;
+      if (obj && obj.userData?.index !== undefined) {
+        const clickedIndex = obj.userData.index as number;
 
-        if (!this.isReadingMode) {
-          // Pull book from shelf onto the reading lectern!
-          this.selectBookFromShelf(book.index);
-        } else {
-          if (book.index === this.activeFolioIndex) {
-            // Clicked active reading book -> toggle return to shelf
-            this.returnBookToShelf();
-          } else {
-            // Clicked another book on shelf -> switch directly to it
-            this.selectBookFromShelf(book.index);
+        if (clickedIndex === this.activeIndex) {
+          // Clicked active center card -> Open case study modal!
+          if (this.callbacks.onSelectProject) {
+            this.callbacks.onSelectProject(PROJECTS[clickedIndex]);
           }
+        } else {
+          // Clicked neighboring card -> Smooth spring to that card!
+          this.selectProject(clickedIndex);
         }
-      }
-    } else {
-      // Clicked outside while in reading mode: Return book to shelf
-      if (this.isReadingMode) {
-        this.returnBookToShelf();
       }
     }
   }
 
   /**
-   * Pulls chosen book from the shelf onto the reading desk
+   * Smoothly springs to the target project index
    */
-  public selectBookFromShelf(index: number): void {
+  public selectProject(index: number): void {
     const clamped = Math.max(0, Math.min(PROJECTS.length - 1, index));
-    this.activeFolioIndex = clamped;
-    this.isReadingMode = true;
-
+    this.scrollTarget = clamped;
+    this.activeIndex = clamped;
     if (this.callbacks.onActiveIndexChange) {
       this.callbacks.onActiveIndexChange(clamped);
     }
-    if (this.callbacks.onBookOpenChange) {
-      this.callbacks.onBookOpenChange(true);
-    }
     this.wakeUp();
   }
 
-  /**
-   * Closes the active tome and returns it back into its slot on the bookshelf
-   */
+  // Compatibility aliases for App.vue
+  public selectBookFromShelf(index: number): void {
+    this.selectProject(index);
+  }
   public returnBookToShelf(): void {
-    this.isReadingMode = false;
-
-    if (this.callbacks.onBookOpenChange) {
-      this.callbacks.onBookOpenChange(false);
-    }
-    this.wakeUp();
+    // No-op in carousel mode
   }
-
   public toggleBookRead(): void {
-    if (this.isReadingMode) {
-      this.returnBookToShelf();
-    } else {
-      this.selectBookFromShelf(this.activeFolioIndex);
+    if (this.callbacks.onSelectProject) {
+      this.callbacks.onSelectProject(PROJECTS[this.activeIndex]);
     }
   }
 
@@ -379,11 +603,6 @@ export class WebGPUEngine {
 
     const tick = () => {
       this.updatePhysics();
-
-      if (this.library) {
-        this.library.updateCandleFlicker(performance.now() * 0.001);
-      }
-
       this.renderer.render(this.scene, this.camera);
 
       if (this.checkIdleState()) {
@@ -404,8 +623,9 @@ export class WebGPUEngine {
   }
 
   private checkIdleState(): boolean {
-    const isMouseIdle = this.mouse.distanceTo(this.targetMouse) < 0.001;
-    return isMouseIdle;
+    const mouseSettled = this.mouse.distanceTo(this.targetMouse) < 0.001;
+    const physicsSettled = Math.abs(this.scrollVelocity) < 0.0001 && Math.abs(this.scrollTarget - this.scrollCurrent) < 0.001;
+    return mouseSettled && physicsSettled && !this.isDragging;
   }
 
   private updatePhysics(): void {
@@ -413,138 +633,60 @@ export class WebGPUEngine {
     this.mouse.x += (this.targetMouse.x - this.mouse.x) * 0.08;
     this.mouse.y += (this.targetMouse.y - this.mouse.y) * 0.08;
 
-    // 2. Camera transition between Shelf Mode and Reading Mode
-    // In reading mode: Camera looks downward at 25 deg directly onto the desk blotter
-    const targetCameraPos = this.isReadingMode
-      ? new THREE.Vector3(0, 0.65, 3.5)
-      : new THREE.Vector3(0, 0.58, 6.2);
-
-    this.camera.position.lerp(targetCameraPos, 0.06);
-    this.camera.lookAt(0, this.isReadingMode ? -0.75 : -0.22, this.isReadingMode ? 0.55 : 0);
-
-    // 3. Subtle room parallax
-    if (this.library) {
-      this.library.group.position.y = -this.mouse.y * 0.08;
-      this.library.group.position.x = -this.mouse.x * 0.10;
-      this.library.group.rotation.y = this.mouse.x * 0.010;
+    // 2. Patrick Heng Spring Physics for Horizontal Scroll
+    if (!this.isDragging) {
+      const springDiff = this.scrollTarget - this.scrollCurrent;
+      this.scrollVelocity += springDiff * 0.082; // Spring stiffness
+      this.scrollVelocity *= 0.78; // Spring damping
+    } else {
+      this.scrollVelocity *= 0.88;
     }
 
-    // 4. Animate each of the 5 books (Shelf Slots vs Desk Blotter)
-    let anyBookAnimating = false;
+    this.scrollCurrent += this.scrollVelocity;
 
-    this.books.forEach((item) => {
-      const book = item.book;
-      const slotPos = this.getShelfSlotPos(book.index);
-
-      let targetPos: THREE.Vector3;
-      let targetScale: number;
-      let targetRotX: number;
-      let targetRotY: number;
-      let targetRotZ: number;
-
-      if (this.isReadingMode && book.index === this.activeFolioIndex) {
-        // ACTIVE TOME: Firmly resting on the Florentine leather blotter (100% Grounded on the table!)
-        targetPos = new THREE.Vector3(0.0, -0.65, 0.60);
-        targetScale = 0.90;
-        targetRotX = -0.70; // Inclined at 40 deg resting comfortably on desk blotter
-        targetRotY = this.mouse.x * 0.02;
-        targetRotZ = 0.0;
-
-        // Open front cover once it lands on the desk
-        const distToDesk = book.group.position.distanceTo(targetPos);
-        if (distToDesk < 0.35) {
-          book.setOpen(1.0);
-        } else {
-          book.setOpen(0.0);
-        }
-      } else {
-        // BOOK RESTING ON THE SHELF CRADLE (100% Grounded on the table, ZERO vertical floating!)
-        book.setOpen(0.0);
-        const isHovered = !this.isReadingMode && this.hoveredIndex === book.index;
-
-        if (isHovered) {
-          // Slide smoothly forward along the wooden shelf rail towards viewer (Y stays grounded on table!)
-          targetPos = new THREE.Vector3(slotPos.x, slotPos.y, slotPos.z + 0.28);
-          targetScale = 0.58; // Constant scale keeps base firmly on deck
-          targetRotX = -0.06;
-          targetRotY = (this.mouse.x * 1.5 - slotPos.x) * 0.04;
-          targetRotZ = 0.0;
-        } else {
-          // Firmly seated in its shelf slot on the desk
-          targetPos = new THREE.Vector3(slotPos.x, slotPos.y, slotPos.z);
-          targetScale = 0.58;
-          targetRotX = -0.04;
-          targetRotY = 0.0;
-          targetRotZ = 0.0;
-        }
+    // Detect active project index transition
+    const nearestIndex = Math.max(0, Math.min(PROJECTS.length - 1, Math.round(this.scrollCurrent)));
+    if (nearestIndex !== this.activeIndex && Math.abs(this.scrollCurrent - nearestIndex) < 0.4) {
+      this.activeIndex = nearestIndex;
+      if (this.callbacks.onActiveIndexChange) {
+        this.callbacks.onActiveIndexChange(nearestIndex);
       }
+    }
 
-      // Smooth physics lerping for position, scale & rotation
-      book.group.position.lerp(targetPos, 0.08);
+    // 3. Signature Velocity Tilt (Patrick Heng style)
+    const tiltZ = -this.scrollVelocity * 0.045;
+    const tiltY = -this.scrollVelocity * 0.065;
 
-      const curScale = book.group.scale.x;
-      const newScale = THREE.MathUtils.lerp(curScale, targetScale, 0.08);
-      book.group.scale.set(newScale, newScale, newScale);
+    // 4. Update each floating card position, scale, and tilt
+    this.cards.forEach((item) => {
+      const card = item.group;
+      const offset = item.index - this.scrollCurrent;
+      const distFromCenter = Math.abs(offset);
 
-      book.group.rotation.x = THREE.MathUtils.lerp(book.group.rotation.x, targetRotX, 0.08);
-      book.group.rotation.y = THREE.MathUtils.lerp(book.group.rotation.y, targetRotY, 0.08);
-      book.group.rotation.z = THREE.MathUtils.lerp(book.group.rotation.z, targetRotZ, 0.08);
+      // Target X: centered along track
+      const targetX = offset * this.cardSpacing;
 
-      const isStillAnimating = book.update();
-      if (isStillAnimating || book.group.position.distanceTo(targetPos) > 0.005) {
-        anyBookAnimating = true;
-      }
+      // Parallax depth: active card stays forward at z = 0, sides recede to z = -0.6
+      const isHovered = this.hoveredIndex === item.index;
+      const targetZ = (isHovered ? 0.35 : 0.0) - Math.min(distFromCenter * 0.45, 0.9);
+
+      // Scale: center card is 1.0, neighbors taper to 0.86
+      const targetScale = Math.max(0.86, 1.0 - distFromCenter * 0.12);
+
+      // Subtle mouse tilt for active/hovered cards
+      const mouseTiltX = distFromCenter < 0.6 ? this.mouse.y * 0.06 : 0;
+      const mouseTiltY = distFromCenter < 0.6 ? this.mouse.x * 0.08 : 0;
+
+      card.position.x = THREE.MathUtils.lerp(card.position.x, targetX, 0.14);
+      card.position.y = THREE.MathUtils.lerp(card.position.y, isHovered ? 0.12 : 0.0, 0.12);
+      card.position.z = THREE.MathUtils.lerp(card.position.z, targetZ, 0.12);
+
+      card.rotation.z = THREE.MathUtils.lerp(card.rotation.z, tiltZ, 0.1);
+      card.rotation.y = THREE.MathUtils.lerp(card.rotation.y, tiltY + mouseTiltY, 0.1);
+      card.rotation.x = THREE.MathUtils.lerp(card.rotation.x, mouseTiltX, 0.1);
+
+      card.scale.setScalar(THREE.MathUtils.lerp(card.scale.x, targetScale, 0.12));
     });
-
-    if (anyBookAnimating || this.camera.position.distanceTo(targetCameraPos) > 0.01) {
-      this.wakeUp();
-    }
-
-    // 5. Update Golden Dust Particles (Organic convective draft + gentle attraction to active book)
-    if (this.particles) {
-      const posAttr = this.particles.geometry.attributes.position as THREE.BufferAttribute;
-      const positions = posAttr.array as Float32Array;
-      const count = positions.length / 3;
-
-      // Focal point for golden dust: hovered shelf folio or active reading lectern
-      let focalX = this.mouse.x * 5;
-      let focalY = this.mouse.y * 4;
-      let focalZ = 0;
-      if (!this.isReadingMode && this.hoveredIndex !== null) {
-        const hSlot = this.getShelfSlotPos(this.hoveredIndex);
-        focalX = hSlot.x;
-        focalY = hSlot.y + 0.2;
-        focalZ = hSlot.z + 0.3;
-      } else if (this.isReadingMode) {
-        focalX = 0;
-        focalY = -0.65;
-        focalZ = 0.60;
-      }
-
-      for (let i = 0; i < count; i++) {
-        const i3 = i * 3;
-
-        positions[i3 + 1] += this.particleVelocities[i3 + 1];
-        positions[i3] += this.particleVelocities[i3];
-
-        const dx = focalX - positions[i3];
-        const dy = focalY - positions[i3 + 1];
-        const dz = focalZ - positions[i3 + 2];
-        const distSq = dx * dx + dy * dy + dz * dz;
-
-        if (distSq < 20) {
-          const force = (20 - distSq) * 0.00012;
-          positions[i3] += dx * force;
-          positions[i3 + 1] += dy * force;
-          positions[i3 + 2] += dz * force;
-        }
-
-        if (positions[i3 + 1] > 11) {
-          positions[i3 + 1] = -11;
-        }
-      }
-      posAttr.needsUpdate = true;
-    }
   }
 
   public dispose(): void {
@@ -554,19 +696,10 @@ export class WebGPUEngine {
     }
     window.removeEventListener('resize', this.onResize);
 
-    this.books.forEach((b) => b.book.dispose());
-    this.books = [];
-
-    if (this.library) {
-      this.library.dispose();
-      this.scene.remove(this.library.group);
-    }
-
-    if (this.particles) {
-      this.particles.geometry.dispose();
-      (this.particles.material as THREE.Material).dispose();
-      this.scene.remove(this.particles);
-    }
+    this.geometries.forEach((g) => g.dispose());
+    this.materials.forEach((m) => m.dispose());
+    this.textures.forEach((t) => t.dispose());
+    this.cards = [];
 
     this.renderer.dispose();
   }

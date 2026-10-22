@@ -1,16 +1,18 @@
 :root {
-  --bg-primary: #927a5f;
-  --bg-parchment: #e5c69f;
-  --text-dark: #26211a;
-  --text-muted: #564222;
-  --text-gold: #b19c73;
-  --gold-glow: rgba(177, 156, 115, 0.35);
-  --border-antique: rgba(46, 35, 17, 0.22);
-  --card-shadow: 0 16px 40px rgba(38, 33, 26, 0.28);
+  --bg-primary: #f4f0ed;
+  --bg-surface: #ffffff;
+  --bg-card: #fcfbf9;
+  --text-primary: #252422;
+  --text-muted: #8c8080;
+  --text-light: #b0a8a0;
+  --accent-orange: #e56b55;
+  --accent-gold: #c6b18f;
+  --border-subtle: rgba(37, 36, 34, 0.08);
+  --border-strong: rgba(37, 36, 34, 0.18);
 
-  /* Fonts */
-  --font-display: 'Metamorphous', Georgia, serif;
+  /* Clean Editorial Typography */
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 * {
@@ -25,13 +27,14 @@ body {
   height: 100%;
   overflow: hidden;
   background-color: var(--bg-primary);
-  color: var(--text-dark);
+  color: var(--text-primary);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  user-select: none;
 }
 
-/* Allow natural text selection for copyable content */
+/* Allow natural text selection for copyable modal content */
 .selectable-text,
 .selectable-text *,
 input,
@@ -44,26 +47,6 @@ h4,
 span,
 a {
   user-select: text;
-}
-
-/* Scrollbar aesthetic */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #2e2311;
-}
-::-webkit-scrollbar-thumb {
-  background: #92743e;
-  border-radius: 3px;
-}
-
-/* Renaissance Heading */
-h1, h2, h3, .font-renaissance {
-  font-family: var(--font-display);
-  letter-spacing: 0.04em;
-  font-weight: 400;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 /* Canvas container */
@@ -79,14 +62,6 @@ h1, h2, h3, .font-renaissance {
   width: 100%;
   height: 100%;
   display: block;
-}
-
-/* DOM UI overlay */
-.ui-overlay {
-  position: relative;
-  z-index: 10;
-  pointer-events: none;
-  min-height: 100vh;
 }
 
 .interactive {
