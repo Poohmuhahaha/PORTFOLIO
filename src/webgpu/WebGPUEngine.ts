@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { WebGPURenderer } from 'three/webgpu';
+import gsap from 'gsap';
 import { PROJECTS, type ProjectItem } from '../data/projects';
+import { createLiquidWaveMaterial } from './LiquidWaveShader';
 
 export interface EngineCallbacks {
   onSelectProject?: (project: ProjectItem) => void;
@@ -15,14 +17,16 @@ interface CardItem {
   index: number;
   mesh: THREE.Mesh;
   group: THREE.Group;
+  liquidMaterial: THREE.ShaderMaterial;
+  hoverProgress: { value: number };
 }
 
 /**
  * Patrick Heng & Justine Soulié inspired WebGL/WebGPU Spring Card Engine
- * - Dynamic 3D Floating Project Posters
- * - Direct Drag & Flick Momentum with Spring Physics & Inertia
- * - Velocity-Driven Tilt (Signature Patrick Heng squash & stretch effect)
- * - Tactile Paper Canvas & Soft Contact Shadows
+ * - Custom GLSL Liquid Wave & Mouse Ripple Distortion Shader
+ * - GSAP-driven fluid dampening, inertia & chromatic aberration (RGB Shift)
+ * - Dynamic 3D Floating Project Posters with Tactile Drop Shadows
+ * - Direct Drag & Flick Momentum with Spring Physics
  */
 export class WebGPUEngine {
   private container: HTMLElement;
@@ -108,7 +112,7 @@ export class WebGPUEngine {
     // 5. Shadow-Receiving Paper Backdrop
     this.buildBackdrop();
 
-    // 6. Build Floating Project Cards
+    // 6. Build Floating Project Cards with Liquid Wave Shaders
     this.buildCards();
 
     // 7. Event listeners & Render Loop
@@ -165,51 +169,52 @@ export class WebGPUEngine {
   private buildCards(): void {
     const cardW = 3.05;
     const cardH = 4.15;
-    const cardD = 0.06;
+    const cardD = 0.04;
 
     PROJECTS.forEach((project, index) => {
       const cardGroup = new THREE.Group();
 
-      // Front Poster Artwork Texture
+      // 1. Front Poster Artwork Texture
       const posterTex = this.generateProjectPosterTexture(project, index);
-      const posterMat = new THREE.MeshStandardMaterial({
-        map: posterTex,
-        roughness: 0.38,
-        metalness: 0.04
-      });
-      this.materials.push(posterMat);
 
-      // Card Back & Rim Material (Paper core)
-      const rimMat = new THREE.MeshStandardMaterial({
+      // 2. Patrick Heng GLSL Liquid Wave Shader Material
+      const liquidMat = createLiquidWaveMaterial(posterTex);
+      this.materials.push(liquidMat);
+
+      // Subdivided plane mesh for real-time 3D fluid ripple deformation
+      const frontPlaneGeo = new THREE.PlaneGeometry(cardW, cardH, 48, 48);
+      this.geometries.push(frontPlaneGeo);
+      const frontMesh = new THREE.Mesh(frontPlaneGeo, liquidMat);
+      frontMesh.position.set(0, 0, 0.01);
+      frontMesh.userData = { project, index };
+      cardGroup.add(frontMesh);
+
+      // 3. Tactile Backing Plate & Shadow Caster
+      const backGeo = new THREE.BoxGeometry(cardW, cardH, cardD);
+      this.geometries.push(backGeo);
+      const backMat = new THREE.MeshStandardMaterial({
         color: 0xded8d0,
-        roughness: 0.82,
+        roughness: 0.85,
         metalness: 0.02
       });
-      this.materials.push(rimMat);
+      this.materials.push(backMat);
+      const backMesh = new THREE.Mesh(backGeo, backMat);
+      backMesh.position.set(0, 0, -cardD / 2);
+      backMesh.castShadow = true;
+      backMesh.receiveShadow = true;
+      cardGroup.add(backMesh);
 
-      // Multi-material box: [right, left, top, bottom, front, back]
-      const cardMaterials: THREE.Material[] = [
-        rimMat,
-        rimMat,
-        rimMat,
-        rimMat,
-        posterMat, // Front Face
-        rimMat    // Back Face
-      ];
-
-      const cardGeo = new THREE.BoxGeometry(cardW, cardH, cardD, 4, 4, 1);
-      this.geometries.push(cardGeo);
-
-      const cardMesh = new THREE.Mesh(cardGeo, cardMaterials);
-      cardMesh.castShadow = true;
-      cardMesh.receiveShadow = true;
-      cardMesh.userData = { project, index };
-
-      cardGroup.add(cardMesh);
       cardGroup.position.set(index * this.cardSpacing, 0, 0);
 
       this.scene.add(cardGroup);
-      this.cards.push({ project, index, mesh: cardMesh, group: cardGroup });
+      this.cards.push({
+        project,
+        index,
+        mesh: frontMesh,
+        group: cardGroup,
+        liquidMaterial: liquidMat,
+        hoverProgress: { value: 0 }
+      });
     });
   }
 
@@ -476,11 +481,20 @@ export class WebGPUEngine {
   }
 
   /**
-   * Finishes drag gesture and engages spring snapping to nearest project
+   * Finishes drag gesture and engages spring snapping to nearest project with GSAP inertia
    */
   public endDrag(): void {
     this.isDragging = false;
-    this.scrollTarget = Math.max(0, Math.min(PROJECTS.length - 1, Math.round(this.scrollCurrent)));
+    const targetIdx = Math.max(0, Math.min(PROJECTS.length - 1, Math.round(this.scrollCurrent)));
+    
+    // GSAP smooth inertia snap
+    gsap.to(this, {
+      scrollTarget: targetIdx,
+      duration: 0.65,
+      ease: 'power3.out',
+      onUpdate: () => this.wakeUp()
+    });
+
     this.wakeUp();
   }
 
@@ -502,7 +516,7 @@ export class WebGPUEngine {
       }
     }
 
-    // Raycast to detect card hover
+    // Raycast to detect card hover and exact UV coordinates for liquid ripples
     this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const intersects = this.raycaster.intersectObjects(
       this.cards.map((c) => c.mesh),
@@ -517,10 +531,38 @@ export class WebGPUEngine {
       }
       if (obj && obj.userData?.index !== undefined) {
         newHovered = obj.userData.index as number;
+
+        // Set liquid ripple epicenter to exact mouse intersection point!
+        if (intersects[0].uv) {
+          const uv = intersects[0].uv;
+          const card = this.cards[newHovered];
+          card.liquidMaterial.uniforms.uMouse.value.set(uv.x, uv.y);
+        }
       }
     }
 
     if (newHovered !== this.hoveredIndex) {
+      // Trigger GSAP wave easing for hover transitions
+      if (newHovered !== null) {
+        const targetCard = this.cards[newHovered];
+        gsap.to(targetCard.hoverProgress, {
+          value: 1.0,
+          duration: 0.45,
+          ease: 'power2.out',
+          overwrite: 'auto'
+        });
+      }
+
+      if (this.hoveredIndex !== null && this.hoveredIndex !== newHovered) {
+        const prevCard = this.cards[this.hoveredIndex];
+        gsap.to(prevCard.hoverProgress, {
+          value: 0.0,
+          duration: 0.65,
+          ease: 'power2.inOut',
+          overwrite: 'auto'
+        });
+      }
+
       this.hoveredIndex = newHovered;
       this.container.style.cursor = newHovered !== null ? 'pointer' : 'default';
       if (this.callbacks.onHoverBookChange) {
@@ -552,7 +594,14 @@ export class WebGPUEngine {
         const clickedIndex = obj.userData.index as number;
 
         if (clickedIndex === this.activeIndex) {
-          // Clicked active center card -> Open case study modal!
+          // Clicked active center card -> Trigger fluid ripple surge and open case study modal!
+          const activeCard = this.cards[clickedIndex];
+          gsap.fromTo(
+            activeCard.liquidMaterial.uniforms.uRGBShift,
+            { value: 1.8 },
+            { value: 0.0, duration: 0.75, ease: 'power2.out' }
+          );
+
           if (this.callbacks.onSelectProject) {
             this.callbacks.onSelectProject(PROJECTS[clickedIndex]);
           }
@@ -565,12 +614,19 @@ export class WebGPUEngine {
   }
 
   /**
-   * Smoothly springs to the target project index
+   * Smoothly springs to the target project index with GSAP easing
    */
   public selectProject(index: number): void {
     const clamped = Math.max(0, Math.min(PROJECTS.length - 1, index));
-    this.scrollTarget = clamped;
     this.activeIndex = clamped;
+
+    gsap.to(this, {
+      scrollTarget: clamped,
+      duration: 0.75,
+      ease: 'power3.out',
+      onUpdate: () => this.wakeUp()
+    });
+
     if (this.callbacks.onActiveIndexChange) {
       this.callbacks.onActiveIndexChange(clamped);
     }
@@ -629,6 +685,8 @@ export class WebGPUEngine {
   }
 
   private updatePhysics(): void {
+    const time = performance.now() * 0.001;
+
     // 1. Mouse coordinates lerping
     this.mouse.x += (this.targetMouse.x - this.mouse.x) * 0.08;
     this.mouse.y += (this.targetMouse.y - this.mouse.y) * 0.08;
@@ -657,7 +715,7 @@ export class WebGPUEngine {
     const tiltZ = -this.scrollVelocity * 0.045;
     const tiltY = -this.scrollVelocity * 0.065;
 
-    // 4. Update each floating card position, scale, and tilt
+    // 4. Update each floating card position, scale, tilt & GLSL Liquid Wave Uniforms
     this.cards.forEach((item) => {
       const card = item.group;
       const offset = item.index - this.scrollCurrent;
@@ -686,6 +744,13 @@ export class WebGPUEngine {
       card.rotation.x = THREE.MathUtils.lerp(card.rotation.x, mouseTiltX, 0.1);
 
       card.scale.setScalar(THREE.MathUtils.lerp(card.scale.x, targetScale, 0.12));
+
+      // 5. Feed real-time uniforms to Patrick Heng GLSL Liquid Wave Shader
+      const mat = item.liquidMaterial;
+      mat.uniforms.uTime.value = time;
+      mat.uniforms.uVelocity.value.set(this.scrollVelocity, 0);
+      mat.uniforms.uHover.value = item.hoverProgress.value;
+      mat.uniforms.uDrag.value = this.isDragging ? 1.0 : 0.0;
     });
   }
 
