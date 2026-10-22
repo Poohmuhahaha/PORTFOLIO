@@ -113,10 +113,31 @@ const resetCarousel = () => {
   selectProject(0);
 };
 
+const openActiveBook = (onComplete?: () => void) => {
+  if (engine) {
+    engine.openBook(engine.activeIndex, onComplete);
+  }
+};
+
+const openBook = (index: number, onComplete?: () => void) => {
+  if (engine) {
+    engine.openBook(index, onComplete);
+  }
+};
+
+const closeBook = (onComplete?: () => void) => {
+  if (engine) {
+    engine.closeBook(onComplete);
+  }
+};
+
 defineExpose({
   wakeUp,
   selectProject,
-  resetCarousel
+  resetCarousel,
+  openActiveBook,
+  openBook,
+  closeBook
 });
 
 onBeforeUnmount(() => {

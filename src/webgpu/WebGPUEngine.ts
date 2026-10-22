@@ -45,6 +45,11 @@ export class WebGPUEngine {
   private hoveredIndex: number | null = null;
   public activeIndex = 0;
 
+  // Book Opening Presentation State
+  public isBookOpen = false;
+  public isBookAnimating = false;
+  public activeOpenIndex: number | null = null;
+
   // Spring & Drag Physics
   public scrollCurrent = 0;
   public scrollTarget = 0;
@@ -226,6 +231,13 @@ export class WebGPUEngine {
       innerTex.colorSpace = THREE.SRGBColorSpace;
       this.textures.push(innerTex);
 
+      // Horizontally flipped inner texture for Verso page (face -z on 180° rotated cover)
+      const innerTexVerso = innerTex.clone();
+      innerTexVerso.wrapS = THREE.RepeatWrapping;
+      innerTexVerso.repeat.x = -1;
+      innerTexVerso.offset.x = 1;
+      this.textures.push(innerTexVerso);
+
       // 2. Front Cover PBR Material (Leather grain + Embossed Gold Leaf + Normal map)
       const frontCoverMat = new THREE.MeshStandardMaterial({
         map: coverTex,
@@ -237,13 +249,21 @@ export class WebGPUEngine {
       });
       this.materials.push(frontCoverMat);
 
-      // Inner Verso leaf material
-      const innerLeafMat = new THREE.MeshStandardMaterial({
+      // Inner Verso leaf material (Correctly flipped for 180-degree swing)
+      const innerLeafVersoMat = new THREE.MeshStandardMaterial({
+        map: innerTexVerso,
+        roughness: 0.84,
+        metalness: 0.02
+      });
+      this.materials.push(innerLeafVersoMat);
+
+      // Inner Recto leaf material (For stationary right page block)
+      const innerLeafRectoMat = new THREE.MeshStandardMaterial({
         map: innerTex,
         roughness: 0.84,
         metalness: 0.02
       });
-      this.materials.push(innerLeafMat);
+      this.materials.push(innerLeafRectoMat);
 
       // Leather Spine & Back Cover Material
       const backCoverMat = new THREE.MeshStandardMaterial({
@@ -293,13 +313,13 @@ export class WebGPUEngine {
       bookGroup.add(backCoverMesh);
 
       // 5. Page Block (Inner paper leaves stack)
-      // Front face displays illuminated recto overview, sides display striated page edges
+      // Front face (+z) displays illuminated recto overview, sides display striated page edges
       const pageMaterials = [
         pageEdgeMat, // right (+x)
         pageEdgeMat, // left (-x)
         pageEdgeMat, // top (+y)
         pageEdgeMat, // bottom (-y)
-        innerLeafMat, // front (+z): illuminated recto page
+        innerLeafRectoMat, // front (+z): illuminated recto page
         pageEdgeMat // back (-z)
       ];
       const pageBlockGeo = new THREE.BoxGeometry(this.bookW - 0.08, this.bookH - 0.1, this.bookD - 0.05);
@@ -315,14 +335,14 @@ export class WebGPUEngine {
       coverHinge.position.set(-this.bookW / 2, 0, 0);
 
       // Front Cover Board materials:
-      // [+x, -x, +y, -y, +z (Front cover art), -z (Inner leaf)]
+      // [+x, -x, +y, -y, +z (Front cover art), -z (Verso leaf)]
       const coverBoxMaterials = [
         backCoverMat, // right
         backCoverMat, // left
         backCoverMat, // top
         backCoverMat, // bottom
-        frontCoverMat, // front cover
-        innerLeafMat // inside verso leaf
+        frontCoverMat, // front cover (+z)
+        innerLeafVersoMat // inside verso leaf (-z)
       ];
       const coverBoxGeo = new THREE.BoxGeometry(this.bookW, this.bookH, 0.04);
       this.geometries.push(coverBoxGeo);
@@ -381,6 +401,7 @@ export class WebGPUEngine {
   };
 
   public applyDragDelta(dx: number): void {
+    if (this.isBookOpen || this.isBookAnimating) return;
     this.isDragging = true;
     const factor = -dx * 0.0034;
     this.scrollCurrent += factor;
@@ -390,6 +411,7 @@ export class WebGPUEngine {
   }
 
   public endDrag(): void {
+    if (this.isBookOpen || this.isBookAnimating) return;
     this.isDragging = false;
     // Infinite loop: snap to nearest integer without clamping bounds
     const targetIdx = Math.round(this.scrollCurrent);
@@ -405,6 +427,7 @@ export class WebGPUEngine {
   }
 
   public applyWheelDelta(dir: number): void {
+    if (this.isBookOpen || this.isBookAnimating) return;
     // Infinite loop: step target continuously
     this.scrollTarget = Math.round(this.scrollCurrent) + dir;
     gsap.to(this, {
@@ -416,6 +439,7 @@ export class WebGPUEngine {
   }
 
   public updatePointer(ndcX: number, ndcY: number, isDragging: boolean = false): void {
+    if (this.isBookOpen || this.isBookAnimating) return;
     this.targetMouse.set(ndcX, ndcY);
 
     if (isDragging !== this.isDragging) {
@@ -505,15 +529,154 @@ export class WebGPUEngine {
       if (obj && obj.userData?.index !== undefined) {
         const clickedIndex = obj.userData.index as number;
 
+        if (this.isBookOpen || this.isBookAnimating) {
+          return;
+        }
+
         if (clickedIndex === this.activeIndex) {
-          if (this.callbacks.onSelectProject) {
-            this.callbacks.onSelectProject(this.projects[clickedIndex]);
-          }
+          this.openBook(clickedIndex, () => {
+            if (this.callbacks.onSelectProject) {
+              this.callbacks.onSelectProject(this.projects[clickedIndex]);
+            }
+          });
         } else {
           this.selectProject(clickedIndex);
         }
       }
     }
+  }
+
+  public openBook(index: number, onComplete?: () => void): void {
+    if (this.isBookAnimating) return;
+
+    const N = this.projects.length;
+    const normalizedIndex = ((index % N) + N) % N;
+    this.activeOpenIndex = normalizedIndex;
+    this.isBookAnimating = true;
+    this.isBookOpen = true;
+
+    const item = this.books[normalizedIndex];
+    this.wakeUp();
+
+    // 1. Shift other books smoothly outward & fade them down
+    this.books.forEach((b) => {
+      if (b.index !== normalizedIndex) {
+        let offset = (b.index - this.scrollCurrent) % N;
+        while (offset > N / 2) offset -= N;
+        while (offset < -N / 2) offset += N;
+        const dir = offset >= 0 ? 1 : -1;
+
+        gsap.to(b.group.position, {
+          x: b.group.position.x + dir * 6.5,
+          z: -5.5,
+          duration: 0.8,
+          ease: 'power2.inOut',
+          onUpdate: () => this.wakeUp()
+        });
+        gsap.to(b.group.scale, {
+          x: 0.35,
+          y: 0.35,
+          z: 0.35,
+          duration: 0.8,
+          ease: 'power2.inOut'
+        });
+      }
+    });
+
+    // 2. Animate selected book to center stage:
+    // When the cover opens 180°, shifting the book group x by +this.bookW / 2
+    // places the central spine hinge at x = 0!
+    gsap.to(item.group.position, {
+      x: this.bookW / 2,
+      y: 0.05,
+      z: 1.45, // Zoom up close for intimate reading view
+      duration: 0.85,
+      ease: 'power2.inOut',
+      onUpdate: () => this.wakeUp()
+    });
+
+    gsap.to(item.group.rotation, {
+      x: -0.05,
+      y: 0.0,
+      z: 0.0,
+      duration: 0.85,
+      ease: 'power2.inOut'
+    });
+
+    gsap.to(item.group.scale, {
+      x: 1.05,
+      y: 1.05,
+      z: 1.05,
+      duration: 0.85,
+      ease: 'power2.inOut'
+    });
+
+    // 3. Swing the cover hinge 180 degrees open smoothly!
+    gsap.to(item.coverHinge.rotation, {
+      y: -Math.PI,
+      duration: 0.9,
+      ease: 'power2.inOut',
+      onUpdate: () => this.wakeUp(),
+      onComplete: () => {
+        this.isBookAnimating = false;
+        this.wakeUp();
+        if (onComplete) onComplete();
+      }
+    });
+  }
+
+  public closeBook(onComplete?: () => void): void {
+    if (this.activeOpenIndex === null) return;
+    this.isBookAnimating = true;
+
+    const item = this.books[this.activeOpenIndex];
+    this.wakeUp();
+
+    // 1. Swing cover hinge closed
+    gsap.to(item.coverHinge.rotation, {
+      y: 0,
+      duration: 0.7,
+      ease: 'power2.inOut',
+      onUpdate: () => this.wakeUp()
+    });
+
+    // 2. Animate active book back to its carousel slot
+    gsap.to(item.group.position, {
+      x: 0,
+      y: 0,
+      z: 0,
+      duration: 0.75,
+      ease: 'power2.out',
+      onUpdate: () => this.wakeUp()
+    });
+
+    gsap.to(item.group.scale, {
+      x: 1.0,
+      y: 1.0,
+      z: 1.0,
+      duration: 0.75,
+      ease: 'power2.out'
+    });
+
+    // 3. Bring other books back into carousel scale
+    this.books.forEach((b) => {
+      gsap.to(b.group.scale, {
+        x: 1.0,
+        y: 1.0,
+        z: 1.0,
+        duration: 0.75,
+        ease: 'power2.out'
+      });
+    });
+
+    // Release animation lock after transition
+    setTimeout(() => {
+      this.isBookOpen = false;
+      this.isBookAnimating = false;
+      this.activeOpenIndex = null;
+      this.wakeUp();
+      if (onComplete) onComplete();
+    }, 750);
   }
 
   public selectProject(index: number): void {
@@ -624,6 +787,10 @@ export class WebGPUEngine {
     const tiltY = -this.scrollVelocity * 0.065;
 
     // 4. Update each 3D book's position with seamless infinite modulo wrapping
+    if (this.isBookOpen || this.isBookAnimating) {
+      return;
+    }
+
     this.books.forEach((item) => {
       const book = item.group;
 

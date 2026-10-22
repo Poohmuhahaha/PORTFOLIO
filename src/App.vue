@@ -37,7 +37,7 @@
     <ProjectModal
       :project="selectedProject"
       :projects="projects"
-      @close="selectedProject = null"
+      @close="onCloseProject"
       @select-project="onSelectProject"
       @open-about="showAboutModal = true"
     />
@@ -75,13 +75,23 @@ const currentProject = computed<ProjectItem>(() => {
 });
 
 const onSelectProject = (project: ProjectItem) => {
-  selectedProject.value = project;
   const idx = projects.value.findIndex((p) => p.id === project.id);
   if (idx !== -1) {
     activeIndex.value = idx;
     if (webgpuCanvasRef.value) {
-      webgpuCanvasRef.value.selectProject(idx);
+      webgpuCanvasRef.value.openBook(idx, () => {
+        selectedProject.value = project;
+      });
+      return;
     }
+  }
+  selectedProject.value = project;
+};
+
+const onCloseProject = () => {
+  selectedProject.value = null;
+  if (webgpuCanvasRef.value) {
+    webgpuCanvasRef.value.closeBook();
   }
 };
 
@@ -90,13 +100,22 @@ const onActiveIndexChange = (index: number) => {
 };
 
 const onResetCarousel = () => {
+  if (selectedProject.value) {
+    onCloseProject();
+  }
   if (webgpuCanvasRef.value) {
     webgpuCanvasRef.value.resetCarousel();
   }
 };
 
 const openActiveProject = () => {
-  selectedProject.value = currentProject.value;
+  if (webgpuCanvasRef.value) {
+    webgpuCanvasRef.value.openActiveBook(() => {
+      selectedProject.value = currentProject.value;
+    });
+  } else {
+    selectedProject.value = currentProject.value;
+  }
 };
 </script>
 
