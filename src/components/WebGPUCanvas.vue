@@ -4,6 +4,7 @@
     id="webgpu-canvas-container"
     @click="handleClick"
     @pointermove="handlePointerMove"
+    @wheel.passive="handleWheel"
   ></div>
 </template>
 
@@ -16,7 +17,7 @@ import type { ProjectItem } from '../data/projects';
 const emit = defineEmits<{
   (e: 'select-project', project: ProjectItem): void;
   (e: 'active-index-change', index: number): void;
-  (e: 'scroll-delta', delta: number): void;
+  (e: 'wheel-delta', dir: number): void;
   (e: 'backend-ready', backend: string): void;
   (e: 'book-open-change', isOpen: boolean): void;
   (e: 'hover-book-change', index: number | null): void;
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 const containerRef = ref<HTMLElement | null>(null);
 let engine: WebGPUEngine | null = null;
 let dragGesture: DragGesture | null = null;
+let lastWheelTime = 0;
 
 onMounted(async () => {
   if (!containerRef.value) return;
@@ -39,18 +41,15 @@ onMounted(async () => {
 
   await engine.init();
 
-  // Attach Touch / Pointer Drag gestures with soft inertia
+  // Attach Touch / Pointer Drag gestures with true pointer coordinates (No snapping to 0,0!)
   dragGesture = new DragGesture(
     containerRef.value,
-    ({ velocity: [, vy], direction: [, dy], dragging }) => {
-      if (!engine) return;
-
-      if (dragging) {
-        // Drag translates to smooth scroll offset
-        const dragFactor = -dy * vy * 0.04;
-        emit('scroll-delta', dragFactor);
-        engine.updatePointer(0, 0, true);
-      }
+    ({ xy: [x, y], dragging }) => {
+      if (!engine || !containerRef.value) return;
+      const rect = containerRef.value.getBoundingClientRect();
+      const ndcX = ((x - rect.left) / rect.width) * 2 - 1;
+      const ndcY = -((y - rect.top) / rect.height) * 2 + 1;
+      engine.updatePointer(ndcX, ndcY, dragging);
     },
     { eventOptions: { passive: false } }
   );
@@ -64,15 +63,19 @@ const handlePointerMove = (e: PointerEvent) => {
   engine.updatePointer(ndcX, ndcY);
 };
 
-const handleClick = (e: MouseEvent) => {
-  if (engine) {
-    engine.handleClick(e);
+const handleWheel = (e: WheelEvent) => {
+  const now = performance.now();
+  if (now - lastWheelTime < 280) return; // Debounce wheel gestures
+  if (Math.abs(e.deltaY) > 20 || Math.abs(e.deltaX) > 20) {
+    const dir = e.deltaY > 0 || e.deltaX > 0 ? 1 : -1;
+    lastWheelTime = now;
+    emit('wheel-delta', dir);
   }
 };
 
-const updateScroll = (progress: number, velocity: number) => {
+const handleClick = (e: MouseEvent) => {
   if (engine) {
-    engine.updateScroll(progress, velocity);
+    engine.handleClick(e);
   }
 };
 
@@ -101,7 +104,6 @@ const toggleBookRead = () => {
 };
 
 defineExpose({
-  updateScroll,
   wakeUp,
   selectBookFromShelf,
   returnBookToShelf,
@@ -119,13 +121,3 @@ onBeforeUnmount(() => {
   }
 });
 </script>
-
-<style scoped>
-#webgpu-canvas-container {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: auto;
-  overflow: hidden;
-}
-</style>
