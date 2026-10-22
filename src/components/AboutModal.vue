@@ -6,10 +6,10 @@
           <button class="close-btn" @click="$emit('close')" aria-label="Close">✕</button>
 
           <div class="modal-header">
-            <span class="category-pill">ABOUT & CRAFT</span>
+            <span class="category-pill">ARCHIVE & CRAFT</span>
             <h2 class="about-title">Phuwadon Thontra</h2>
             <p class="about-subtitle">
-              Creative Developer & Full-Stack Engineer • Bangkok, Thailand
+              Creative Developer & Fluid Dynamics Physics Engineer • Bangkok, Thailand
             </p>
 
             <!-- Signature thunder bar -->

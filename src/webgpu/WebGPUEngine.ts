@@ -70,18 +70,18 @@ export class WebGPUEngine {
     const width = this.container.clientWidth || window.innerWidth;
     const height = this.container.clientHeight || window.innerHeight;
 
-    // 1. Scene & Warm Editorial Paper Canvas
+    // 1. Scene with transparent background to allow Fluid Dynamics simulation to swirl underneath
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0xf4f0ed);
 
     // 2. Camera Setup (Optimal FOV for vertical editorial posters)
     this.camera = new THREE.PerspectiveCamera(44, width / height, 0.1, 80);
     this.camera.position.set(0, 0, 7.8);
     this.camera.lookAt(0, 0, 0);
 
-    // 3. WebGPU Renderer initialization with fallback
+    // 3. WebGPU Renderer initialization with transparent background
     this.renderer = new WebGPURenderer({
       antialias: true,
+      alpha: true,
       powerPreference: 'high-performance'
     });
 
@@ -149,14 +149,12 @@ export class WebGPUEngine {
   }
 
   private buildBackdrop(): void {
-    // Large seamless paper wall behind cards to capture soft contact shadows
+    // Large seamless transparent shadow catcher behind cards to let fluid dynamics flow visibly
     const wallGeo = new THREE.PlaneGeometry(38, 26);
     this.geometries.push(wallGeo);
 
-    const wallMat = new THREE.MeshStandardMaterial({
-      color: 0xf4f0ed,
-      roughness: 0.95,
-      metalness: 0.0
+    const wallMat = new THREE.ShadowMaterial({
+      opacity: 0.12
     });
     this.materials.push(wallMat);
 
@@ -230,11 +228,11 @@ export class WebGPUEngine {
 
     // 1. Curated Project Base Tone
     const bgGradients: Record<string, [string, string]> = {
+      'hydro-core': ['#091426', '#030712'],
       artibition: ['#28221b', '#17130f'],
       huuk: ['#f8f5f0', '#ece4d8'],
       pugu: ['#1e2530', '#10141a'],
-      pos: ['#181a19', '#0d0f0e'],
-      'cloud-engine': ['#231c19', '#140f0d']
+      'teenueng-studio': ['#231c19', '#140f0d']
     };
 
     const isLightCard = project.id === 'huuk';
@@ -310,6 +308,52 @@ export class WebGPUEngine {
     const cy = 620;
 
     switch (id) {
+      case 'hydro-core': {
+        // Swirling Navier-Stokes fluid vortices and luminous streamlines
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 4;
+
+        // Dynamic vortex spirals
+        for (let s = 0; s < 5; s++) {
+          ctx.beginPath();
+          const startAngle = (s * Math.PI * 2) / 5;
+          for (let a = 0; a < Math.PI * 4; a += 0.1) {
+            const r = 20 + a * 22;
+            const px = cx + Math.cos(startAngle + a) * r;
+            const py = cy + Math.sin(startAngle + a) * (r * 0.75);
+            if (a === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.strokeStyle = s % 2 === 0 ? accent : '#6366f1';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+
+        // Luminous fluid core glow
+        const fGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 180);
+        fGrad.addColorStop(0, '#ffffff');
+        fGrad.addColorStop(0.3, '#38bdf8');
+        fGrad.addColorStop(0.7, '#6366f1');
+        fGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+        ctx.fillStyle = fGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 180, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Curl noise particle dots
+        for (let p = 0; p < 24; p++) {
+          const ang = p * 0.28;
+          const dist = 60 + p * 8;
+          const dotX = cx + Math.cos(ang) * dist;
+          const dotY = cy + Math.sin(ang) * (dist * 0.8);
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(dotX, dotY, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+
       case 'artibition': {
         // Classical Roman Arch with Perspective Wireframe & Gilded Orb
         ctx.strokeStyle = accent;

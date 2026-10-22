@@ -17,38 +17,31 @@ export interface ProjectItem {
   highlights?: string[];
 }
 
-export const RENAISSANCE_PALETTES = {
-  background: '#927A5F',
-  themes: [
-    {
-      id: 1,
-      theme: 'Landscape',
-      colors: ['#E5C69F', '#2E2311', '#B8AD9C', '#564222', '#92743E']
-    },
-    {
-      id: 2,
-      theme: 'Classical Bust Sculpture',
-      colors: ['#EBE8E7', '#736C60', '#CD8DB0', '#A5896F']
-    },
-    {
-      id: 3,
-      theme: 'Portrait of Woman with Bowl',
-      colors: ['#26211A', '#D2CAB4', '#B19C73', '#6D4F27', '#4F5B6B']
-    },
-    {
-      id: 4,
-      theme: 'Baroque Fresco Architecture',
-      colors: ['#5A452D', '#312822', '#C6B18F', '#7A3F34']
-    },
-    {
-      id: 5,
-      theme: 'Classical Ruins Architecture',
-      colors: ['#251D13', '#443220', '#685035', '#8D6C45', '#C3BDB8']
-    }
-  ]
-};
-
 export const PROJECTS: ProjectItem[] = [
+  {
+    id: 'hydro-core',
+    title: 'Hydro Core',
+    subtitle: 'Eulerian Navier-Stokes GPU Fluid Dynamics & Creative Physics Lab',
+    category: 'Fluid Dynamics & GPU Physics',
+    year: '2025–2026',
+    description:
+      'คลังโค้ดจำลองพลศาสตร์ของเหลว (Fluid Dynamics) บน GPU แก้สมการ Incompressible Navier-Stokes แบบเรียลไทม์ 60 FPS ครบทั้ง Advection, Jacobi Poisson Pressure, Vorticity Confinement, Multi-color Dye Diffusion และ Curl Noise Turbulence ตอบสนองต่อเมาส์และแรงสะบัดอย่างเป็นธรรมชาติ',
+    tags: ['WebGL / WebGPU', 'Navier-Stokes', 'GLSL Shaders', 'GPGPU', 'Fluid Physics'],
+    role: 'Lead Physics & Creative Developer',
+    paletteTheme: 'Navier-Stokes Liquid Dynamics',
+    accentColor: '#38bdf8', // Luminous Cyan
+    secondaryColor: '#f43f5e', // Coral Rose
+    stats: 'Eulerian Grid • 60 FPS Real-time Fluid',
+    liveUrl: 'https://github.com/Poohmuhahaha',
+    githubUrl: 'https://github.com/Poohmuhahaha',
+    paletteColors: ['#0f172a', '#38bdf8', '#818cf8', '#f43f5e', '#facc15'],
+    highlights: [
+      'แก้สมการ Navier-Stokes บน GPU เรียลไทม์: Advection, Pressure Projection, Vorticity Confinement',
+      'Multi-pass Ping-Pong FBO Architecture คำนวณความเร็ว (Velocity) และความหนาแน่นสี (Dye) 60fps',
+      'ระบบผสมสีของเหลวตามสัมผัสเมาส์ พร้อมประกายแสงสะท้อนผิวน้ำ (Specular Crest Sheen)',
+      'คลังโค้ดจำลองของเหลวแบบ Open Source พร้อมพารามิเตอร์ Viscosity, Vorticity และ Dissipation ปรับแต่งได้อิสระ'
+    ]
+  },
   {
     id: 'artibition',
     title: 'Artibition',
@@ -60,12 +53,12 @@ export const PROJECTS: ProjectItem[] = [
     tags: ['Next.js 16', 'WebGPU / 3D', 'Turborepo', 'Bun', 'Prisma'],
     role: 'Lead Architect & Fullstack',
     paletteTheme: 'Baroque Fresco Architecture',
-    accentColor: '#C6B18F', // Warm Gilded Beige
-    secondaryColor: '#7A3F34', // Terracotta
+    accentColor: '#c6b18f', // Warm Gilded Beige
+    secondaryColor: '#7a3f34', // Terracotta
     stats: 'Global Art Discovery • 20+ Galleries',
     liveUrl: 'https://artibition.art',
     githubUrl: 'https://github.com/Poohmuhahaha',
-    paletteColors: ['#5A452D', '#312822', '#C6B18F', '#7A3F34'],
+    paletteColors: ['#5a452d', '#312822', '#c6b18f', '#7a3f34'],
     highlights: [
       'Curated digital chronicle for global museum exhibitions',
       'Editorial CMS powered by Next.js 16 & Cloudflare R2',
@@ -83,12 +76,12 @@ export const PROJECTS: ProjectItem[] = [
     tags: ['Vue 3', 'TypeScript', 'Rust (Axum)', 'Automated Tests', 'Tailwind'],
     role: 'Co-founder & Frontend Lead',
     paletteTheme: 'Classical Bust Sculpture',
-    accentColor: '#CD8DB0', // Dusky Mauve
-    secondaryColor: '#EBE8E7', // Pale Alabaster
+    accentColor: '#cd8db0', // Dusky Mauve
+    secondaryColor: '#ebe8e7', // Pale Alabaster
     stats: '200+ Automated Tests • Sub-5ms API',
     liveUrl: 'https://github.com/Poohmuhahaha/huuk-tech',
     githubUrl: 'https://github.com/Poohmuhahaha/huuk-tech',
-    paletteColors: ['#EBE8E7', '#736C60', '#CD8DB0', '#A5896F'],
+    paletteColors: ['#ebe8e7', '#736c60', '#cd8db0', '#a5896f'],
     highlights: [
       'Cross-platform creator publishing engine (Meta, TikTok, YouTube)',
       'Ultra-resilient Rust Axum backend with sub-5ms API latency',
@@ -98,7 +91,7 @@ export const PROJECTS: ProjectItem[] = [
   {
     id: 'pugu',
     title: 'Pugu',
-    subtitle: 'Multi-Tenant Workspace & Relationship Graph',
+    subtitle: 'Multi-Tenant Workspace & Relational Graph View',
     category: 'Enterprise Data',
     year: '2025–Ongoing',
     description:
@@ -106,38 +99,16 @@ export const PROJECTS: ProjectItem[] = [
     tags: ['Vue 3', 'Design System', 'Rust API', 'Tauri Desktop', 'Graph View'],
     role: 'Frontend Systems Engineer',
     paletteTheme: 'Portrait of Woman with Bowl',
-    accentColor: '#B19C73', // Antique Gold
-    secondaryColor: '#4F5B6B', // Slate Steel Blue
+    accentColor: '#b19c73', // Antique Gold
+    secondaryColor: '#4f5b6b', // Slate Steel Blue
     stats: 'Interactive Node Graph • Multi-tenant',
     liveUrl: 'https://github.com/Poohmuhahaha/pugu-tech',
     githubUrl: 'https://github.com/Poohmuhahaha/pugu-tech',
-    paletteColors: ['#26211A', '#D2CAB4', '#B19C73', '#6D4F27', '#4F5B6B'],
+    paletteColors: ['#26211a', '#d2cab4', '#b19c73', '#6d4f27', '#4f5b6b'],
     highlights: [
       'Multi-tenant collaborative enterprise workspace',
       'Interactive relational node graph with real-time updates',
       'Cross-platform desktop distribution powered by Tauri'
-    ]
-  },
-  {
-    id: 'ascott-cluster',
-    title: 'Ascott Cluster',
-    subtitle: 'Hospitality Funnel & CRO Optimization System',
-    category: 'Performance & Growth',
-    year: '2025',
-    description:
-      'Digital revenue channel analysis across 10 global nationalities with technical SEO audit, booking flow optimization, and rich interactive engagement.',
-    tags: ['Technical SEO', 'CRO Funnel', 'Audience Segmentation', 'LINE OA'],
-    role: 'Sales & Marketing Consultant',
-    paletteTheme: 'Landscape',
-    accentColor: '#E5C69F', // Warm Wheat
-    secondaryColor: '#564222', // Olive Bronze
-    stats: '10 Global Segments • High Direct Bookings',
-    liveUrl: 'https://www.discoverasr.com',
-    paletteColors: ['#E5C69F', '#2E2311', '#B8AD9C', '#564222', '#92743E'],
-    highlights: [
-      'Revenue channel audit across 10 international guest segments',
-      'Core Web Vitals optimization and conversion rate engineering',
-      'Omnichannel LINE OA automated booking integration'
     ]
   },
   {
@@ -151,12 +122,12 @@ export const PROJECTS: ProjectItem[] = [
     tags: ['Creative Coding', 'Rust', 'Vue 3', 'Micro-interactions'],
     role: 'Co-founder',
     paletteTheme: 'Classical Ruins Architecture',
-    accentColor: '#8D6C45', // Weathered Ochre
-    secondaryColor: '#C3BDB8', // Light Ash Stone
+    accentColor: '#8d6c45', // Weathered Ochre
+    secondaryColor: '#c3bdb8', // Light Ash Stone
     stats: '3 In-house Products • Web Excellence',
     liveUrl: 'https://github.com/Poohmuhahaha',
     githubUrl: 'https://github.com/Poohmuhahaha',
-    paletteColors: ['#251D13', '#443220', '#685035', '#8D6C45', '#C3BDB8'],
+    paletteColors: ['#251d13', '#443220', '#685035', '#8d6c45', '#c3bdb8'],
     highlights: [
       'Independent creative technology & digital archive lab',
       'Pioneering tactile 3D WebGPU and procedural architectural shaders',

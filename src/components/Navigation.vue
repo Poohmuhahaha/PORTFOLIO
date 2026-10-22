@@ -2,10 +2,10 @@
   <header class="app-header">
     <div class="header-brand">
       <span class="brand-name">Phuwadon Thontra</span>
-      <span class="brand-role">Creative Developer</span>
+      <span class="brand-role">Fluid Dynamics & Creative Physics Lab</span>
       <span class="webgpu-pill" :class="{ 'is-active': isWebGPU }" :title="backendName">
         <span class="pill-dot"></span>
-        <span class="pill-text">{{ isWebGPU ? 'WebGPU' : 'WebGL 2' }}</span>
+        <span class="pill-text">{{ isWebGPU ? 'Navier-Stokes GPU' : 'WebGL 2' }}</span>
       </span>
     </div>
 

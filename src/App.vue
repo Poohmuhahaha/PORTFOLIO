@@ -72,9 +72,9 @@
         </div>
       </div>
 
-      <!-- Subtle Interaction Guide -->
+      <!-- Interactive Fluid & Navigation Guide -->
       <div class="drag-hint">
-        <span>← DRAG OR SCROLL TO EXPLORE →</span>
+        <span>← INTERACTIVE FLUID DYNAMICS ARCHIVE • DRAG OR MOVE MOUSE TO SWIRL LIQUID →</span>
       </div>
     </footer>
 
