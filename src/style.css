@@ -1,0 +1,80 @@
+:root {
+  --bg-primary: #927a5f;
+  --bg-parchment: #e5c69f;
+  --text-dark: #26211a;
+  --text-muted: #564222;
+  --text-gold: #b19c73;
+  --gold-glow: rgba(177, 156, 115, 0.35);
+  --border-antique: rgba(46, 35, 17, 0.22);
+  --card-shadow: 0 16px 40px rgba(38, 33, 26, 0.28);
+
+  /* Fonts */
+  --font-display: 'Metamorphous', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-dark);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* Scrollbar aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #2e2311;
+}
+::-webkit-scrollbar-thumb {
+  background: #92743e;
+  border-radius: 3px;
+}
+
+/* Renaissance Heading */
+h1, h2, h3, .font-renaissance {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  font-weight: 400;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Canvas container */
+#webgpu-canvas-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+#webgpu-canvas-container canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* DOM UI overlay */
+.ui-overlay {
+  position: relative;
+  z-index: 10;
+  pointer-events: none;
+  min-height: 100vh;
+}
+
+.interactive {
+  pointer-events: auto;
+}
