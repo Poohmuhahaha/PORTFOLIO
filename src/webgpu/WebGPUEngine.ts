@@ -115,36 +115,39 @@ export class WebGPUEngine {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // Ambient Hemisphere Dome Light (Rich Chiaroscuro: Warm Tuscan sunset zenith & deep shadowed floor)
-    const hemiLight = new THREE.HemisphereLight(0xe2be88, 0x3a2414, 0.34);
+    // Ambient Hemisphere Dome Light (Rich Chiaroscuro: Warm Tuscan golden hour & warm walnut ground bounce)
+    const hemiLight = new THREE.HemisphereLight(0xffecd0, 0x5a3e28, 0.75);
     this.scene.add(hemiLight);
 
-    // Directional Sunlight Streaming from Top-Left through the Arch Window
-    const sunLight = new THREE.DirectionalLight(0xfff0d6, 3.5);
-    sunLight.position.set(-11, 15, 10);
+    // Directional Sunlight Streaming from Top-Left through the Arch Window onto the Scholar's Desk
+    const sunLight = new THREE.DirectionalLight(0xfff4e0, 3.2);
+    sunLight.position.set(-9, 14, 8);
+    sunLight.target.position.set(0, -1.0, 0.2);
+    this.scene.add(sunLight.target);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 1.0;
-    sunLight.shadow.camera.far = 40;
-    sunLight.shadow.camera.left = -12;
-    sunLight.shadow.camera.right = 12;
-    sunLight.shadow.camera.top = 12;
-    sunLight.shadow.camera.bottom = -12;
-    sunLight.shadow.bias = -0.00012;
+    sunLight.shadow.camera.far = 35;
+    sunLight.shadow.camera.left = -7;
+    sunLight.shadow.camera.right = 7;
+    sunLight.shadow.camera.top = 7;
+    sunLight.shadow.camera.bottom = -7;
+    sunLight.shadow.bias = -0.0001;
     this.scene.add(sunLight);
 
-    // Warm Amber Fill Light (Soft warm bounce from the right side)
-    const fillLight = new THREE.DirectionalLight(0xf0c598, 0.28);
-    fillLight.position.set(10, 4, 8);
+    // Warm Amber Fill Light (Soft luminous bounce from the right side)
+    const fillLight = new THREE.DirectionalLight(0xf5d8b8, 0.85);
+    fillLight.position.set(8, 6, 8);
     this.scene.add(fillLight);
   }
 
   /**
    * Dedicated slot position on the showcase shelf for each book
+   * Synchronized with the desk shelf rack at z = -0.15, resting firmly on the wood deck
    */
   public getShelfSlotPos(index: number): THREE.Vector3 {
-    return new THREE.Vector3(-2.7 + index * 1.35, -0.85, -0.65);
+    return new THREE.Vector3(-2.6 + index * 1.30, -0.78, -0.15);
   }
 
   private buildBooks(): void {
@@ -411,13 +414,13 @@ export class WebGPUEngine {
     this.mouse.y += (this.targetMouse.y - this.mouse.y) * 0.08;
 
     // 2. Camera transition between Shelf Mode and Reading Mode
-    // In reading mode: Camera looks downward at 23 deg directly onto the desk table
+    // In reading mode: Camera looks downward at 25 deg directly onto the desk blotter
     const targetCameraPos = this.isReadingMode
-      ? new THREE.Vector3(0, 0.72, 3.65)
+      ? new THREE.Vector3(0, 0.65, 3.5)
       : new THREE.Vector3(0, 0.58, 6.2);
 
     this.camera.position.lerp(targetCameraPos, 0.06);
-    this.camera.lookAt(0, this.isReadingMode ? -0.65 : -0.22, this.isReadingMode ? 0.35 : 0);
+    this.camera.lookAt(0, this.isReadingMode ? -0.75 : -0.22, this.isReadingMode ? 0.55 : 0);
 
     // 3. Subtle room parallax
     if (this.library) {
@@ -426,7 +429,7 @@ export class WebGPUEngine {
       this.library.group.rotation.y = this.mouse.x * 0.010;
     }
 
-    // 4. Animate each of the 5 books (Shelf Slots vs Reading Desk Lectern)
+    // 4. Animate each of the 5 books (Shelf Slots vs Desk Blotter)
     let anyBookAnimating = false;
 
     this.books.forEach((item) => {
@@ -440,14 +443,14 @@ export class WebGPUEngine {
       let targetRotZ: number;
 
       if (this.isReadingMode && book.index === this.activeFolioIndex) {
-        // ACTIVE TOME: Firmly resting on the desktop reading lectern (100% Grounded on the table!)
-        targetPos = new THREE.Vector3(0.0, -0.56, 0.37);
-        targetScale = 0.92;
-        targetRotX = -0.55; // Inclined at 31.5 deg matching the wooden lectern board
+        // ACTIVE TOME: Firmly resting on the Florentine leather blotter (100% Grounded on the table!)
+        targetPos = new THREE.Vector3(0.0, -0.65, 0.60);
+        targetScale = 0.90;
+        targetRotX = -0.70; // Inclined at 40 deg resting comfortably on desk blotter
         targetRotY = this.mouse.x * 0.02;
         targetRotZ = 0.0;
 
-        // Open front cover once it lands on the desk lectern
+        // Open front cover once it lands on the desk
         const distToDesk = book.group.position.distanceTo(targetPos);
         if (distToDesk < 0.35) {
           book.setOpen(1.0);
@@ -514,8 +517,8 @@ export class WebGPUEngine {
         focalZ = hSlot.z + 0.3;
       } else if (this.isReadingMode) {
         focalX = 0;
-        focalY = -0.55;
-        focalZ = 0.45;
+        focalY = -0.65;
+        focalZ = 0.60;
       }
 
       for (let i = 0; i < count; i++) {

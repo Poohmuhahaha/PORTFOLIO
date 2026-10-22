@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createRomeBackgroundTexture } from './RomeBackground';
 
 /**
  * Procedural 3D Renaissance Library (Biblioteca Antiqua)
@@ -30,7 +31,7 @@ export class RenaissanceLibrary {
     const booksTexture = this.generateRichBookshelfTexture();
     const stoneTexture = this.generateTravertineStoneTexture();
     const leatherTexture = this.generateLeatherBlotterTexture();
-    const windowViewTexture = this.generatePainterlyRomanSkyTexture();
+    const windowViewTexture = createRomeBackgroundTexture();
 
     // 1. Physically Based Materials
     const walnutMat = new THREE.MeshStandardMaterial({
@@ -321,395 +322,6 @@ export class RenaissanceLibrary {
   }
 
   /**
-   * Generates high-resolution Masterwork Italian Golden Hour / Sunset Oil Painting
-   * Inspired by Giovanni Paolo Panini & Claude Lorrain:
-   * - Radiant Roman sunset sky with warm golden-amber chiaroscuro gradient
-   * - Volumetric crepuscular light rays streaming from the setting sun
-   * - Multi-layered feathered cumulus clouds with warm rim highlights & lilac-umber shadows
-   * - Layered Roman Capriccio architectural skyline: Pantheon dome, Colosseum, Temple colonnade, Aqueduct
-   * - Italian Stone Pines (Pinus pinea) and stately Roman cypresses
-   * - Golden atmospheric sfumato haze blending the architecture into the sunset
-   */
-  private generatePainterlyRomanSkyTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 2048;
-    const ctx = canvas.getContext('2d')!;
-
-    // 1. Masterwork Sunset Sky Gradient (Deep Twilight Zenith -> Apricot Amber -> Luminous Horizon Gold)
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, 2048);
-    skyGrad.addColorStop(0.00, '#1a2738'); // Deep Italian twilight lapis
-    skyGrad.addColorStop(0.20, '#2d4566'); // Mediterranean twilight sapphire
-    skyGrad.addColorStop(0.40, '#6d5a6b'); // Mauve dusk transition
-    skyGrad.addColorStop(0.55, '#c96f3b'); // Warm burnt apricot
-    skyGrad.addColorStop(0.70, '#e59a4c'); // Radiant Italian amber
-    skyGrad.addColorStop(0.84, '#fedfa8'); // Luminous golden horizon glow
-    skyGrad.addColorStop(0.94, '#dfbe93'); // Warm Tuscan atmospheric mist
-    skyGrad.addColorStop(1.00, '#8c6b4d'); // Roman earth
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, 2048, 2048);
-
-    // 2. Radiant Setting Sun in Upper-Left with Volumetric Corona
-    const sunX = 580;
-    const sunY = 780;
-
-    // Outer warm atmospheric glow
-    const outerGlow = ctx.createRadialGradient(sunX, sunY, 30, sunX, sunY, 1100);
-    outerGlow.addColorStop(0.0, 'rgba(255, 246, 215, 0.90)');
-    outerGlow.addColorStop(0.25, 'rgba(255, 210, 130, 0.55)');
-    outerGlow.addColorStop(0.55, 'rgba(235, 145, 65, 0.28)');
-    outerGlow.addColorStop(0.85, 'rgba(180, 85, 35, 0.08)');
-    outerGlow.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = outerGlow;
-    ctx.fillRect(0, 0, 2048, 2048);
-
-    // Brilliant golden sun core
-    const coreGlow = ctx.createRadialGradient(sunX, sunY, 5, sunX, sunY, 160);
-    coreGlow.addColorStop(0.0, 'rgba(255, 255, 250, 1.0)');
-    coreGlow.addColorStop(0.3, 'rgba(255, 248, 200, 0.95)');
-    coreGlow.addColorStop(0.7, 'rgba(255, 218, 120, 0.6)');
-    coreGlow.addColorStop(1.0, 'rgba(255, 190, 80, 0)');
-    ctx.fillStyle = coreGlow;
-    ctx.beginPath();
-    ctx.arc(sunX, sunY, 160, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3. Crepuscular Golden Light Rays (God Rays radiating from the sunset)
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    const rayAngles = [-0.65, -0.42, -0.18, 0.05, 0.28, 0.52, 0.78, 1.05];
-    rayAngles.forEach((ang) => {
-      const rayLen = 1600;
-      const rayGrad = ctx.createRadialGradient(sunX, sunY, 40, sunX, sunY, rayLen);
-      rayGrad.addColorStop(0, 'rgba(255, 240, 185, 0.22)');
-      rayGrad.addColorStop(0.4, 'rgba(255, 215, 130, 0.12)');
-      rayGrad.addColorStop(0.8, 'rgba(255, 180, 80, 0.03)');
-      rayGrad.addColorStop(1, 'rgba(255, 160, 60, 0)');
-      ctx.fillStyle = rayGrad;
-
-      ctx.beginPath();
-      ctx.moveTo(sunX, sunY);
-      const spread = 0.14;
-      ctx.lineTo(sunX + Math.cos(ang - spread) * rayLen, sunY + Math.sin(ang - spread) * rayLen);
-      ctx.lineTo(sunX + Math.cos(ang + spread) * rayLen, sunY + Math.sin(ang + spread) * rayLen);
-      ctx.closePath();
-      ctx.fill();
-    });
-    ctx.restore();
-
-    // 4. Painterly Oil-Canvas Clouds (Multi-layered organic sfumato brushwork)
-    const drawOilCloudCluster = (
-      centerX: number,
-      centerY: number,
-      scaleX: number,
-      scaleY: number,
-      puffsCount: number
-    ) => {
-      // Step A: Deep warm mauve-lilac shadow base
-      for (let p = 0; p < puffsCount; p++) {
-        const ox = (Math.sin(p * 2.3) * 0.45) * scaleX;
-        const oy = (Math.cos(p * 1.7) * 0.25 + 0.15) * scaleY;
-        const pr = (0.28 + Math.sin(p * 3.1) * 0.12) * Math.min(scaleX, scaleY);
-
-        const shadeGrad = ctx.createRadialGradient(
-          centerX + ox,
-          centerY + oy + pr * 0.25,
-          pr * 0.1,
-          centerX + ox,
-          centerY + oy,
-          pr
-        );
-        shadeGrad.addColorStop(0, 'rgba(92, 65, 78, 0.42)');
-        shadeGrad.addColorStop(0.65, 'rgba(125, 82, 85, 0.22)');
-        shadeGrad.addColorStop(1, 'rgba(125, 82, 85, 0)');
-        ctx.fillStyle = shadeGrad;
-        ctx.beginPath();
-        ctx.arc(centerX + ox, centerY + oy, pr, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Step B: Warm sunset amber midtones
-      for (let p = 0; p < puffsCount; p++) {
-        const ox = (Math.sin(p * 2.3) * 0.4) * scaleX;
-        const oy = (Math.cos(p * 1.7) * 0.2) * scaleY;
-        const pr = (0.24 + Math.cos(p * 2.9) * 0.1) * Math.min(scaleX, scaleY);
-
-        const midGrad = ctx.createRadialGradient(
-          centerX + ox - pr * 0.15,
-          centerY + oy - pr * 0.15,
-          pr * 0.1,
-          centerX + ox,
-          centerY + oy,
-          pr
-        );
-        midGrad.addColorStop(0, 'rgba(248, 182, 112, 0.68)');
-        midGrad.addColorStop(0.7, 'rgba(235, 142, 75, 0.35)');
-        midGrad.addColorStop(1, 'rgba(235, 142, 75, 0)');
-        ctx.fillStyle = midGrad;
-        ctx.beginPath();
-        ctx.arc(centerX + ox, centerY + oy, pr, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Step C: Brilliant sunlit golden rim highlights on the top and left edges
-      for (let p = 0; p < Math.floor(puffsCount * 0.8); p++) {
-        const ox = (Math.sin(p * 2.3) * 0.36 - 0.08) * scaleX;
-        const oy = (Math.cos(p * 1.7) * 0.2 - 0.18) * scaleY;
-        const pr = (0.20 + Math.sin(p * 1.9) * 0.08) * Math.min(scaleX, scaleY);
-
-        const rimGrad = ctx.createRadialGradient(
-          centerX + ox - pr * 0.2,
-          centerY + oy - pr * 0.2,
-          pr * 0.05,
-          centerX + ox,
-          centerY + oy,
-          pr
-        );
-        rimGrad.addColorStop(0, 'rgba(255, 252, 238, 0.92)');
-        rimGrad.addColorStop(0.45, 'rgba(255, 230, 172, 0.65)');
-        rimGrad.addColorStop(1, 'rgba(255, 215, 140, 0)');
-        ctx.fillStyle = rimGrad;
-        ctx.beginPath();
-        ctx.arc(centerX + ox, centerY + oy, pr, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    };
-
-    // Major golden evening cloud banks drifting across Rome
-    drawOilCloudCluster(360, 520, 520, 240, 18);
-    drawOilCloudCluster(940, 420, 680, 280, 24);
-    drawOilCloudCluster(1620, 560, 580, 260, 20);
-    drawOilCloudCluster(720, 660, 440, 180, 14);
-
-    // Soft wisps of evening cirrus in the high twilight sky
-    ctx.save();
-    ctx.strokeStyle = 'rgba(245, 195, 145, 0.25)';
-    ctx.lineWidth = 14;
-    ctx.lineCap = 'round';
-    for (let c = 0; c < 8; c++) {
-      const cy = 180 + c * 38;
-      ctx.beginPath();
-      ctx.moveTo(120 + c * 40, cy);
-      ctx.bezierCurveTo(600 + c * 50, cy - 35, 1200 - c * 40, cy + 30, 1920, cy - 20);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // 5. Layered Roman Capriccio Skyline (Panini & Claude Lorrain)
-    // LAYER A: Distant Atmospheric Horizon & Hills (Soft sepia with warm haze)
-    ctx.fillStyle = '#b38d6b';
-    ctx.beginPath();
-    ctx.ellipse(540, 1450, 920, 220, 0, 0, Math.PI * 2);
-    ctx.ellipse(1560, 1470, 840, 240, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Distant Roman Aqueduct (Aqua Claudia) arches stepping across the hills
-    ctx.fillStyle = '#8f6e52';
-    const aqStartX = 1180;
-    const aqY = 1380;
-    const aqArches = 9;
-    const aqSpan = 52;
-    for (let a = 0; a < aqArches; a++) {
-      const ax = aqStartX + a * aqSpan;
-      ctx.fillRect(ax, aqY - 60, 14, 80);
-      ctx.beginPath();
-      ctx.arc(ax + aqSpan / 2, aqY - 55, (aqSpan - 14) / 2, Math.PI, 0, false);
-      ctx.fill();
-    }
-    ctx.fillRect(aqStartX, aqY - 68, aqArches * aqSpan + 14, 12);
-
-    // Distant Pantheon / St. Peter's Dome Silhouette
-    const domeX = 1140;
-    const domeBaseY = 1360;
-    ctx.fillStyle = '#785b44';
-    // Grand drum / tambour with column pilasters
-    ctx.fillRect(domeX - 110, domeBaseY - 50, 220, 50);
-    for (let col = 0; col < 10; col++) {
-      ctx.fillStyle = '#634934';
-      ctx.fillRect(domeX - 100 + col * 22, domeBaseY - 50, 6, 50);
-    }
-    // Hemispherical Roman Cupola
-    ctx.fillStyle = '#6f533e';
-    ctx.beginPath();
-    ctx.arc(domeX, domeBaseY - 50, 105, Math.PI, 0, false);
-    ctx.fill();
-    // Ribs of the dome
-    ctx.strokeStyle = '#5a4230';
-    ctx.lineWidth = 3;
-    for (let r = -4; r <= 4; r++) {
-      ctx.beginPath();
-      ctx.moveTo(domeX + r * 22, domeBaseY - 50);
-      ctx.quadraticCurveTo(domeX + r * 10, domeBaseY - 130, domeX, domeBaseY - 155);
-      ctx.stroke();
-    }
-    // Lantern cupola and cross/finial
-    ctx.fillStyle = '#5a4230';
-    ctx.fillRect(domeX - 14, domeBaseY - 180, 28, 30);
-    ctx.beginPath();
-    ctx.arc(domeX, domeBaseY - 180, 12, Math.PI, 0, false);
-    ctx.fill();
-    ctx.fillRect(domeX - 2, domeBaseY - 200, 4, 20);
-
-    // LAYER B: Mid-ground Ancient Roman Ruined Architecture (Warm Travertine Umber)
-    ctx.fillStyle = '#533c2a';
-
-    // B1: Ruined Corinthian Temple Portico (Temple of Saturn / Vespasian) on the Left
-    const porticoX = 320;
-    const porticoBaseY = 1420;
-    const porticoH = 220;
-    // 4 Grand Fluted Columns
-    for (let c = 0; c < 4; c++) {
-      const cx = porticoX + c * 58;
-      // Base
-      ctx.fillRect(cx - 10, porticoBaseY, 20, 14);
-      // Shaft
-      ctx.fillRect(cx - 7, porticoBaseY - porticoH, 14, porticoH);
-      // Capital with volutes
-      ctx.fillRect(cx - 12, porticoBaseY - porticoH - 16, 24, 16);
-    }
-    // Entablature architrave & sculpted frieze
-    ctx.fillRect(porticoX - 18, porticoBaseY - porticoH - 34, 210, 18);
-    // Triangular Classical Pediment
-    ctx.beginPath();
-    ctx.moveTo(porticoX - 22, porticoBaseY - porticoH - 34);
-    ctx.lineTo(porticoX + 87, porticoBaseY - porticoH - 85);
-    ctx.lineTo(porticoX + 196, porticoBaseY - porticoH - 34);
-    ctx.closePath();
-    ctx.fill();
-
-    // B2: The Colosseum Arcades (Flavian Amphitheater) in the Right Midground
-    const coloX = 1580;
-    const coloBaseY = 1420;
-    const coloW = 340;
-    // Massive curved outer wall structure
-    ctx.fillRect(coloX - coloW / 2, coloBaseY - 170, coloW, 170);
-    // 3 Tiers of classical Roman arches
-    for (let tier = 0; tier < 3; tier++) {
-      const ty = coloBaseY - 30 - tier * 50;
-      for (let arc = 0; arc < 7; arc++) {
-        const ax = coloX - coloW / 2 + 25 + arc * 44;
-        ctx.fillStyle = '#2f2115';
-        ctx.beginPath();
-        ctx.arc(ax + 14, ty - 18, 14, Math.PI, 0, false);
-        ctx.fill();
-        ctx.fillRect(ax, ty - 18, 28, 26);
-      }
-    }
-    ctx.fillStyle = '#533c2a';
-
-    // B3: Roman Triumphal Arch (Arch of Constantine) in Center
-    const archX = 820;
-    const archBaseY = 1420;
-    const archW = 160;
-    const archH = 135;
-    ctx.fillRect(archX - archW / 2, archBaseY - archH, archW, archH);
-    // Central large portal
-    ctx.fillStyle = '#2c1e13';
-    ctx.beginPath();
-    ctx.arc(archX, archBaseY - 65, 32, Math.PI, 0, false);
-    ctx.fill();
-    ctx.fillRect(archX - 32, archBaseY - 65, 64, 75);
-    // Side portals
-    [-52, 52].forEach((sx) => {
-      ctx.beginPath();
-      ctx.arc(archX + sx, archBaseY - 42, 16, Math.PI, 0, false);
-      ctx.fill();
-      ctx.fillRect(archX + sx - 16, archBaseY - 42, 32, 52);
-    });
-    // Attic inscription block
-    ctx.fillStyle = '#533c2a';
-    ctx.fillRect(archX - archW / 2 + 10, archBaseY - archH - 30, archW - 20, 30);
-
-    // LAYER C: Roman Foliage & Pines (Deep Umber & Cypress Green)
-    // Iconic Italian Stone Pines (Umbrella Pines / Pinus pinea)
-    const drawItalianStonePine = (px: number, py: number, pineScale: number) => {
-      ctx.save();
-      ctx.strokeStyle = '#281c12';
-      ctx.lineWidth = 10 * pineScale;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.quadraticCurveTo(px + 12 * pineScale, py - 110 * pineScale, px + 26 * pineScale, py - 210 * pineScale);
-      ctx.stroke();
-
-      // Branch forks
-      ctx.lineWidth = 6 * pineScale;
-      ctx.beginPath();
-      ctx.moveTo(px + 22 * pineScale, py - 180 * pineScale);
-      ctx.quadraticCurveTo(px - 35 * pineScale, py - 230 * pineScale, px - 65 * pineScale, py - 260 * pineScale);
-      ctx.moveTo(px + 24 * pineScale, py - 190 * pineScale);
-      ctx.quadraticCurveTo(px + 75 * pineScale, py - 240 * pineScale, px + 105 * pineScale, py - 270 * pineScale);
-      ctx.stroke();
-
-      // Expansive flat-topped umbrella foliage canopy
-      ctx.fillStyle = '#222616';
-      ctx.beginPath();
-      ctx.ellipse(px + 20 * pineScale, py - 270 * pineScale, 115 * pineScale, 45 * pineScale, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#2e351f';
-      ctx.beginPath();
-      ctx.ellipse(px + 5 * pineScale, py - 280 * pineScale, 85 * pineScale, 35 * pineScale, -0.05, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    };
-
-    drawItalianStonePine(210, 1440, 1.15);
-    drawItalianStonePine(610, 1450, 0.95);
-    drawItalianStonePine(1440, 1450, 1.2);
-    drawItalianStonePine(1860, 1430, 1.05);
-
-    // Slender Roman Cypresses (Cupressus sempervirens)
-    const drawCypress = (cx: number, cy: number, ch: number, cw: number) => {
-      ctx.fillStyle = '#1c2214';
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - ch);
-      ctx.quadraticCurveTo(cx - cw, cy - ch * 0.45, cx - cw * 0.8, cy);
-      ctx.lineTo(cx + cw * 0.8, cy);
-      ctx.quadraticCurveTo(cx + cw, cy - ch * 0.45, cx, cy - ch);
-      ctx.fill();
-    };
-
-    drawCypress(130, 1450, 240, 24);
-    drawCypress(170, 1460, 200, 20);
-    drawCypress(710, 1450, 220, 22);
-    drawCypress(1010, 1450, 180, 18);
-    drawCypress(1360, 1450, 260, 26);
-    drawCypress(1760, 1450, 210, 21);
-
-    // 6. Atmospheric Golden Sfumato Haze (Melts base of monuments into the sunset)
-    const sfumatoGrad = ctx.createLinearGradient(0, 1240, 0, 1600);
-    sfumatoGrad.addColorStop(0, 'rgba(255, 228, 175, 0)');
-    sfumatoGrad.addColorStop(0.45, 'rgba(245, 195, 130, 0.42)');
-    sfumatoGrad.addColorStop(0.75, 'rgba(220, 165, 105, 0.55)');
-    sfumatoGrad.addColorStop(1.0, 'rgba(145, 105, 75, 0.7)');
-    ctx.fillStyle = sfumatoGrad;
-    ctx.fillRect(0, 1240, 2048, 360);
-
-    // 7. Subtle Oil-Canvas Linen Grain & Vignette
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
-    for (let y = 0; y < 2048; y += 4) {
-      ctx.fillRect(0, y, 2048, 1.5);
-    }
-    for (let x = 0; x < 2048; x += 4) {
-      ctx.fillRect(x, 0, 1.5, 2048);
-    }
-
-    // Gentle Warm Vignette around edges
-    const vigGrad = ctx.createRadialGradient(1024, 1024, 700, 1024, 1024, 1400);
-    vigGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vigGrad.addColorStop(1, 'rgba(28, 16, 8, 0.45)');
-    ctx.fillStyle = vigGrad;
-    ctx.fillRect(0, 0, 2048, 2048);
-    ctx.restore();
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    this.textures.push(texture);
-    return texture;
-  }
-
-  /**
    * 1. Ground floor with checkerboard parquet
    */
   private buildFloor(material: THREE.Material): void {
@@ -803,7 +415,7 @@ export class RenaissanceLibrary {
     stoneMat: THREE.Material,
     woodMat: THREE.Material,
     booksMat: THREE.Material,
-    windowViewTexture: THREE.CanvasTexture
+    windowViewTexture: THREE.Texture
   ): void {
     const backGroup = new THREE.Group();
     backGroup.position.set(0, -3.2, -5.8);
@@ -883,15 +495,16 @@ export class RenaissanceLibrary {
     barH.position.set(0, 5.2, 0);
     backGroup.add(barH);
 
-    // Grand panoramic vista backdrop plane (Expansive 12x9.6 to cover all parallax angles)
-    const vistaGeo = new THREE.PlaneGeometry(12.0, 9.6);
+    // Grand panoramic vista backdrop plane featuring authentic Panini Roman Capriccio oil painting
+    const vistaGeo = new THREE.PlaneGeometry(15.0, 8.47);
     this.geometries.push(vistaGeo);
     const vistaMat = new THREE.MeshBasicMaterial({
-      map: windowViewTexture
+      map: windowViewTexture,
+      toneMapped: false
     });
     this.materials.push(vistaMat);
     const vista = new THREE.Mesh(vistaGeo, vistaMat);
-    vista.position.set(0, 4.6, -0.2);
+    vista.position.set(0, 4.4, -0.25);
     backGroup.add(vista);
 
     this.group.add(backGroup);
@@ -972,49 +585,6 @@ export class RenaissanceLibrary {
     blotter.position.set(0, deskH + 0.09, 0.55);
     blotter.receiveShadow = true;
     deskGroup.add(blotter);
-
-    // Scholar's Desktop Reading Lectern (Leggio da tavolo)
-    // Carved Tuscan walnut desktop bookstand supporting the open tome squarely on the desk blotter
-    const lecternGroup = new THREE.Group();
-    lecternGroup.position.set(0, deskH + 0.1, 0.48);
-
-    // Lectern Base Footprint resting flush on leather blotter
-    const lBaseGeo = new THREE.BoxGeometry(3.9, 0.04, 2.1);
-    this.geometries.push(lBaseGeo);
-    const lBase = new THREE.Mesh(lBaseGeo, walnutMat);
-    lBase.position.set(0, 0.02, 0);
-    lBase.receiveShadow = true;
-    lecternGroup.add(lBase);
-
-    // Sloping Walnut Reading Board (inclined at -31.5 deg = -0.55 rad matching reading book angle)
-    const lBoardGeo = new THREE.BoxGeometry(3.7, 0.04, 2.15);
-    this.geometries.push(lBoardGeo);
-    const lBoard = new THREE.Mesh(lBoardGeo, walnutMat);
-    lBoard.rotation.x = -0.55;
-    lBoard.position.set(0, 0.58, -0.11);
-    lBoard.castShadow = true;
-    lBoard.receiveShadow = true;
-    lecternGroup.add(lBoard);
-
-    // Carved Side Volute Brackets (Left & Right support wedges)
-    [-1.75, 1.75].forEach((vx) => {
-      const wedgeGeo = new THREE.BoxGeometry(0.08, 0.8, 1.6);
-      this.geometries.push(wedgeGeo);
-      const wedge = new THREE.Mesh(wedgeGeo, walnutMat);
-      wedge.position.set(vx, 0.42, -0.2);
-      wedge.castShadow = true;
-      lecternGroup.add(wedge);
-    });
-
-    // Front Brass Retaining Lip (Secures open book pages squarely from sliding down)
-    const lLipGeo = new THREE.BoxGeometry(3.7, 0.07, 0.06);
-    this.geometries.push(lLipGeo);
-    const lLip = new THREE.Mesh(lLipGeo, brassMat);
-    lLip.position.set(0, 0.05, 0.44);
-    lLip.castShadow = true;
-    lecternGroup.add(lLip);
-
-    deskGroup.add(lecternGroup);
 
     // Turned Renaissance Legs (4 corners) with brass ferrules
     const legGeo = new THREE.CylinderGeometry(0.18, 0.24, deskH - 0.08, 14);
@@ -1229,17 +799,17 @@ export class RenaissanceLibrary {
 
   /**
    * 6. Dedicated Low Renaissance Folio Cradle / Lectern Stand
-   * Open, airy, low-profile cradle resting on the back edge of the scholar desk.
-   * Completely unobstructed: NO overhead beams, NO tall backboards, NO blocking of the Roman arch!
+   * Open, airy, low-profile cradle resting directly on the scholar desk at z = -0.15.
+   * Completely unobstructed: NO overhead beams, NO tall backboards, NO blocking of the Roman vista!
    * The 5 antique volumes rest securely on a carved walnut & brass ledge with low scroll bookends.
    */
   private buildOpenBookRack(walnutMat: THREE.Material, darkWoodMat: THREE.Material, brassMat: THREE.Material): void {
     const rackGroup = new THREE.Group();
-    // Positioned on the back half of the desk (Desk top is at y = -1.6)
-    rackGroup.position.set(0, -1.6, -0.65);
+    // Positioned directly on the desk surface at z = -0.15 (Desk top is at y = -1.6, surface at -1.52)
+    rackGroup.position.set(0, -1.6, -0.15);
 
-    const rackW = 7.6;
-    const rackD = 0.72;
+    const rackW = 6.8;
+    const rackD = 0.50;
 
     // A. Solid Carved Walnut Base Deck
     const baseGeo = new THREE.BoxGeometry(rackW, 0.08, rackD);
@@ -1250,33 +820,33 @@ export class RenaissanceLibrary {
     rackGroup.add(base);
 
     // Front Brass Retaining Lip (Slender protective rail)
-    const lipGeo = new THREE.BoxGeometry(rackW - 0.2, 0.04, 0.03);
+    const lipGeo = new THREE.BoxGeometry(rackW - 0.2, 0.035, 0.03);
     this.geometries.push(lipGeo);
     const lip = new THREE.Mesh(lipGeo, brassMat);
-    lip.position.set(0, 0.09, rackD / 2 - 0.03);
+    lip.position.set(0, 0.08, rackD / 2 - 0.02);
     rackGroup.add(lip);
 
-    // B. Low Angled Backrest Rail (Only 0.42 high to support tilted folios without blocking window!)
-    const backRailH = 0.42;
-    const backRailGeo = new THREE.BoxGeometry(rackW - 0.2, backRailH, 0.04);
+    // B. Low Angled Backrest Rail (Only 0.35 high to support tilted folios without blocking window!)
+    const backRailH = 0.35;
+    const backRailGeo = new THREE.BoxGeometry(rackW - 0.2, backRailH, 0.03);
     this.geometries.push(backRailGeo);
     const backRail = new THREE.Mesh(backRailGeo, darkWoodMat);
     backRail.rotation.x = -0.06;
-    backRail.position.set(0, backRailH / 2 + 0.04, -rackD / 2 + 0.08);
+    backRail.position.set(0, backRailH / 2 + 0.04, -rackD / 2 + 0.06);
     backRail.receiveShadow = true;
     rackGroup.add(backRail);
 
     // Slender Top Brass Trim for the backrest
-    const backTrimGeo = new THREE.BoxGeometry(rackW - 0.1, 0.02, 0.04);
+    const backTrimGeo = new THREE.BoxGeometry(rackW - 0.1, 0.02, 0.03);
     this.geometries.push(backTrimGeo);
     const backTrim = new THREE.Mesh(backTrimGeo, brassMat);
-    backTrim.position.set(0, backRailH + 0.05, -rackD / 2 + 0.08);
+    backTrim.position.set(0, backRailH + 0.05, -rackD / 2 + 0.06);
     rackGroup.add(backTrim);
 
     // C. Low Sculpted Walnut & Brass Scroll Bookends on far LEFT and far RIGHT only
-    [-rackW / 2 + 0.12, rackW / 2 - 0.12].forEach((bx) => {
-      const bookendH = 0.72;
-      const bookendGeo = new THREE.BoxGeometry(0.22, bookendH, rackD - 0.1);
+    [-rackW / 2 + 0.1, rackW / 2 - 0.1].forEach((bx) => {
+      const bookendH = 0.58;
+      const bookendGeo = new THREE.BoxGeometry(0.18, bookendH, rackD - 0.06);
       this.geometries.push(bookendGeo);
       const bookend = new THREE.Mesh(bookendGeo, walnutMat);
       bookend.position.set(bx, bookendH / 2 + 0.04, 0);
@@ -1285,29 +855,29 @@ export class RenaissanceLibrary {
       rackGroup.add(bookend);
 
       // Brass ornamental medallion on outer side
-      const medalGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.02, 16);
+      const medalGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.02, 16);
       this.geometries.push(medalGeo);
       const medal = new THREE.Mesh(medalGeo, brassMat);
       medal.rotation.z = Math.PI / 2;
-      medal.position.set(bx + (bx > 0 ? 0.11 : -0.11), bookendH * 0.6, 0);
+      medal.position.set(bx + (bx > 0 ? 0.09 : -0.09), bookendH * 0.6, 0);
       rackGroup.add(medal);
     });
 
     // D. 5 Inlaid Brass Roman Numeral Plates mounted neatly on the front shelf lip
     const slots = 5;
     for (let s = 0; s < slots; s++) {
-      const sx = -2.7 + s * 1.35;
-      const plaqueGeo = new THREE.BoxGeometry(0.52, 0.05, 0.02);
+      const sx = -2.6 + s * 1.30;
+      const plaqueGeo = new THREE.BoxGeometry(0.48, 0.035, 0.02);
       this.geometries.push(plaqueGeo);
       const plaque = new THREE.Mesh(plaqueGeo, brassMat);
       plaque.position.set(sx, 0.05, rackD / 2 - 0.01);
       rackGroup.add(plaque);
 
       // Embedded brass guide inlay under each book
-      const markerGeo = new THREE.BoxGeometry(0.9, 0.005, 0.02);
+      const markerGeo = new THREE.BoxGeometry(0.85, 0.005, 0.02);
       this.geometries.push(markerGeo);
       const marker = new THREE.Mesh(markerGeo, brassMat);
-      marker.position.set(sx, 0.082, rackD / 2 - 0.12);
+      marker.position.set(sx, 0.082, rackD / 2 - 0.10);
       rackGroup.add(marker);
     }
 
